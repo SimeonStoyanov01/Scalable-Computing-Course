@@ -5,7 +5,6 @@ import org.apache.spark.graphx.util.GraphGenerators
 
 object SimulatorApp {
   def main(args: Array[String]): Unit = {
-    val logFile = "README.md" // Should be some file on your system
     val spark = SparkSession.builder.appName("Simulator").getOrCreate()
 
     // A graph with edge attributes containing distances
@@ -27,7 +26,6 @@ object SimulatorApp {
       (a, b) => math.min(a, b) // Merge Message
     )
     println(sssp.vertices.collect.mkString("\n"))
-
 
     spark.stop()
   }
