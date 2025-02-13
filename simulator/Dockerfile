@@ -15,6 +15,6 @@ bla bla bla
 la la al
 EOF
 
-COPY --from=0 /app/target/scala-2.12/simple-project_2.12-1.0.jar out.jar
+COPY --from=0 /app/target/scala-2.12/simulator_2.12-1.0.jar out.jar
 
 CMD ["/opt/spark/bin/spark-submit", "out.jar"]
