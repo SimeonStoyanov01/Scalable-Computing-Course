@@ -18,8 +18,8 @@ object SimulatorApp {
 
     val emptygraph: Graph[Cell, Direction.Value] = Graph.fromEdges(edges, emptyCell)
 
-    val graph = emptygraph.mapVertices((id, _) =>
-    if (id == 1) new Cell(false, Set(new Ant(Direction.South))) else new Cell(false, Set()))
+    var graph = emptygraph.mapVertices((id, _) =>
+    if (id == 1 || id == 8) new Cell(false, Set(new Ant(Direction.South))) else new Cell(false, Set()))
 
     def handleIncomingAnts(id: VertexId, cell: Cell, ants: Set[Ant]): Cell 
       = if (cell.ants.isEmpty) {
@@ -29,20 +29,26 @@ object SimulatorApp {
       }
 
     def msgAnts(triplet: EdgeContext[Cell, Direction.Value, Set[Ant]]) {
-      triplet.sendToDst(triplet.srcAttr.ants.filter(ant => ant.direction == triplet.attr))
+      val dirAnts = triplet.srcAttr.ants.filter(ant => ant.direction == triplet.attr)
+      if (!dirAnts.isEmpty) {
+        triplet.sendToDst(dirAnts)
+      }
     }
 
     def mergeAnts(a: Set[Ant], b: Set[Ant]): Set[Ant] = a ++ b
 
-    println(graph.vertices.collect.mkString("\n"))
+    for (i <- 1 to 10) {
 
-    // Performs one step of simulation
-    val messages = graph.aggregateMessages[Set[Ant]](msgAnts, mergeAnts)
+      val messages = graph.aggregateMessages[Set[Ant]](msgAnts, mergeAnts).cache()
 
-    val result = graph.joinVertices(messages)(handleIncomingAnts)
+      graph = graph.joinVertices(messages)(handleIncomingAnts).cache()
 
-    println(result.vertices.collect.mkString("\n"))
-    printPrettyGrid(result, gridSize)
+    }
+    printPrettyGrid(graph, gridSize)
+
+    // while(true){
+    //    scala.io.StdIn.readLine() // Hack for keeping spark open
+    // }
 
     spark.stop()
   }
