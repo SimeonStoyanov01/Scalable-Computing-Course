@@ -13,13 +13,13 @@ object SimulatorApp {
 
     val emptyCell = new Cell(false, Set())
 
-    val gridSize = 6
+    val gridSize = 20
     val edges = createGrid(sc, gridSize)
 
     val emptygraph: Graph[Cell, Direction.Value] = Graph.fromEdges(edges, emptyCell)
 
     var graph = emptygraph.mapVertices((id, _) =>
-    if (id == 1 || id == 8) new Cell(false, Set(new Ant(Direction.South))) else new Cell(false, Set()))
+    if (id == 206 || id == 246) new Cell(false, Set(new Ant(Direction.South))) else new Cell(false, Set()))
 
     def handleIncomingAnts(id: VertexId, cell: Cell, ants: Set[Ant]): Cell 
       = if (cell.ants.isEmpty) {
@@ -27,9 +27,19 @@ object SimulatorApp {
       } else {
         new Cell(!cell.colour, ants)
       }
+    
+    def antRule(cell: Cell, direction: Direction.Value): Set[Ant] = {
+      val newAnts = if(cell.colour) { // Black square
+        cell.ants.map(ant => new Ant(ant.direction.rotateCounterClockwise))
+      } else { // White square
+        cell.ants.map(ant => new Ant(ant.direction.rotateClockwise))
+      }
+      newAnts.filter(ant => ant.direction == direction)
+    }
 
     def msgAnts(triplet: EdgeContext[Cell, Direction.Value, Set[Ant]]) {
-      val dirAnts = triplet.srcAttr.ants.filter(ant => ant.direction == triplet.attr)
+      // val dirAnts = triplet.srcAttr.ants.filter(ant => ant.direction == triplet.attr)
+      val dirAnts = antRule(triplet.srcAttr, triplet.attr)
       if (!dirAnts.isEmpty) {
         triplet.sendToDst(dirAnts)
       }
@@ -37,12 +47,19 @@ object SimulatorApp {
 
     def mergeAnts(a: Set[Ant], b: Set[Ant]): Set[Ant] = a ++ b
 
-    for (i <- 1 to 10) {
+    def clearAnts(id: VertexId, cell: Cell): Cell 
+      = if (cell.ants.isEmpty) {
+        new Cell(cell.colour, Set()) 
+      } else {
+        new Cell(!cell.colour, Set())
+      }
 
+    for (i <- 1 to 20) {
       val messages = graph.aggregateMessages[Set[Ant]](msgAnts, mergeAnts).cache()
 
-      graph = graph.joinVertices(messages)(handleIncomingAnts).cache()
+      graph = graph.mapVertices(clearAnts).cache()
 
+      graph = graph.joinVertices(messages)(handleIncomingAnts).cache()
     }
     printPrettyGrid(graph, gridSize)
 

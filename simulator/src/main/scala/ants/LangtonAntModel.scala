@@ -2,6 +2,22 @@ package com.rug.ants.LangtonAntModel
 
 object Direction extends Enumeration {
     val North, East, South, West = Value
+
+    implicit class DirectionValueOps(val dir: Value) extends AnyVal {
+        def rotateClockwise: Value = dir match {
+            case North => East
+            case East => South
+            case South => West
+            case West => North
+        }
+
+        def rotateCounterClockwise: Value = dir match {
+            case North => West
+            case West => South
+            case South => East
+            case East => North
+        }
+    }
 }
 
 class Ant(val direction: Direction.Value) extends Serializable {
