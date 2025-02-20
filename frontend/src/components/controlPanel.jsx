@@ -55,7 +55,6 @@ function ControlPanel({gridRows, setGridRows, gridCols, setGridCols, ants, setAn
                     Save Simulation: 
                     <input 
                     type="checkbox" 
-                    name="saveCheckbox" 
                     defaultChecked={false}
                     checked={saveSimulation}
                     onChange={(e) => setSaveSimulation(e.target.checked)}

@@ -31,19 +31,27 @@ function App() {
     console.log('Simulation running: ', simulationRunning)
   }, [simulationRunning])
 
+  useEffect(() => {
+    document.documentElement.style.setProperty("--rows", gridRows);
+    document.documentElement.style.setProperty("--cols", gridCols);
+  }, [gridRows, gridCols]);
+
   return (
     <div className="App">
       <header className="App-header">
-        <h1> Langton Ant Simulation </h1>
-        {/* <img src={ant} alt="logo" /> */}
+        <h1> Langton Ant Simulation    </h1>
+        <div>
+          <img src={ant} alt="Langton's Ant" className="header-image" />
+        </div>
       </header>
 
       <div className='main-content'>
         <div className="left-panel">
-          <h1>This is the grid spot</h1>
           <Grid gridRows={gridRows}
-            gridCols={gridCols}/>
+            gridCols={gridCols} 
+            ants={ants} />
         </div>
+
         <div className="right-panel">
           <ControlPanel gridRows={gridRows} 
             setGridRows={setGridRows} 
