@@ -3,6 +3,7 @@ import ant from './ant.jpg'
 import './App.css';
 import ControlPanel from './components/controlPanel'
 import Grid from './components/grid';
+// import WebSocketClient from './components/webSocketClient';
 
 function App() {
   const [gridRows, setGridRows] = useState(10);
@@ -10,6 +11,7 @@ function App() {
   const [ants, setAntNumber] = useState(5);
   const [saveSimulation, setSaveSimulation] = useState(false);
   const [simulationRunning, setSimulationStatus] = useState(false);
+  // const [ws, connected, initialize_grid] = WebSocketClient("ws://localhost:8080/ws")
 
   useEffect(() => {
     console.log('Grid Rows: ', gridRows)
