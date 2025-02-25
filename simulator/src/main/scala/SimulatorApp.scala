@@ -1,12 +1,12 @@
+package com.rug.SimulatorApp
+
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{EdgeContext, EdgeDirection, Edge, EdgeTriplet, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx.util.GraphGenerators
 import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction}
-import java.util.Properties
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
-import org.apache.kafka.common.serialization.StringSerializer
+import org.apache.spark.sql.functions._
 
 object SimulatorApp {
   def main(args: Array[String]): Unit = {
@@ -58,7 +58,7 @@ object SimulatorApp {
       }
     
 
-    for (i <- 1 to 20) {
+    for (i <- 1 to 2) {
       val messages = graph.aggregateMessages[Set[Ant]](msgAnts, mergeAnts).cache()
 
       graph = graph.mapVertices(clearAnts).cache()
@@ -67,14 +67,16 @@ object SimulatorApp {
     }
     printPrettyGrid(graph, gridSize)
 
-    val props = new java.util.Properties()
-    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "broker:9092")
-    // props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, classOf[StringSerializer].getName)
-    // props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, classOf[StringSerializer].getName)
-    val producer = new KafkaProducer[String, String](props)
-    val record = new ProducerRecord[String, String]("test-topic", "key", "value")
-    producer.send(record)
-    producer.close()
+    graph.vertices.toDF
+      // .withColumnRenamed("_2", "value")
+      .withColumn("value", col("_2").cast("string"))
+      .write
+      // .format("console")
+      // .save()
+      .format("kafka")
+      .option("kafka.bootstrap.servers", "broker:29092")
+      .option("topic", "robintopic")
+      .save()
 
     // while(true){
     //    scala.io.StdIn.readLine() // Hack for keeping spark open
