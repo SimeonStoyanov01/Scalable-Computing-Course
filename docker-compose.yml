@@ -7,7 +7,7 @@ services:
     container_name: backend
     ports:
       - "8000:8000"
-
+# trying something
   frontend:
     build:
       context: ./frontend
