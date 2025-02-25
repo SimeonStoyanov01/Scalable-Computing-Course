@@ -4,6 +4,9 @@ import org.apache.spark.graphx.{EdgeContext, EdgeDirection, Edge, EdgeTriplet, G
 import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx.util.GraphGenerators
 import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction}
+import java.util.Properties
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+import org.apache.kafka.common.serialization.StringSerializer
 
 object SimulatorApp {
   def main(args: Array[String]): Unit = {
@@ -53,6 +56,7 @@ object SimulatorApp {
       } else {
         new Cell(!cell.colour, Set())
       }
+    
 
     for (i <- 1 to 20) {
       val messages = graph.aggregateMessages[Set[Ant]](msgAnts, mergeAnts).cache()
@@ -62,6 +66,15 @@ object SimulatorApp {
       graph = graph.joinVertices(messages)(handleIncomingAnts).cache()
     }
     printPrettyGrid(graph, gridSize)
+
+    val props = new java.util.Properties()
+    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "broker:9092")
+    // props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, classOf[StringSerializer].getName)
+    // props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, classOf[StringSerializer].getName)
+    val producer = new KafkaProducer[String, String](props)
+    val record = new ProducerRecord[String, String]("test-topic", "key", "value")
+    producer.send(record)
+    producer.close()
 
     // while(true){
     //    scala.io.StdIn.readLine() // Hack for keeping spark open
