@@ -5,3 +5,5 @@ While we dont have any deployment running, you can run the simulation code with
 docker build . -t simulator:latest
 docker run simulator
 ```
+
+# diff

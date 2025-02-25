@@ -1,5 +1,5 @@
 package com.rug.ants.LangtonAntModel
-
+//diff
 object Direction extends Enumeration {
     val North, East, South, West = Value
 

@@ -7,7 +7,7 @@ import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction}
 import java.util.Properties
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.serialization.StringSerializer
-
+//diff
 object SimulatorApp {
   def main(args: Array[String]): Unit = {
     val spark = SparkSession.builder.appName("Simulator").getOrCreate()

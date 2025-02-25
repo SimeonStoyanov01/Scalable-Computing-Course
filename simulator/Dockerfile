@@ -18,3 +18,5 @@ WORKDIR /app
 COPY --from=0 /app/target/scala-2.12/simulator_2.12-1.0.jar out.jar
 
 CMD ["/opt/spark/bin/spark-submit", "out.jar"]
+
+## diff
