@@ -23,7 +23,7 @@ function Grid( {gridRows, gridCols, ants} ) {
                                         backgroundColor: cell,
                                     }}
                                     className="grid-cell"
-                                ></td>
+                                > </td>
                             ))}
                         </tr>
                     ))}
