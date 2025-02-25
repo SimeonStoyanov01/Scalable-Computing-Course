@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const WebSocketClient = (url) => {
-    const [ws, setWs] = useState(null);
+const useWebSocketClient = (url) => {
+    // const [ws, setWs] = useState(null);
     const [connected, setConnected] = useState(false);
     const socketRef = useRef(null);
     
@@ -21,7 +21,7 @@ const WebSocketClient = (url) => {
             console.log("Disconnected from the WebSocket server");
             setConnected(false);
         };
-        setWs(ws);
+        // setWs(ws);
         return () => {
             if (socketRef.current) {
               socketRef.current.close();
@@ -30,8 +30,8 @@ const WebSocketClient = (url) => {
     }, [url]);
     
     const initialize_grid = ({gridRows, gridCols, ants}) => {
-        if (ws && connected) {
-            ws.send(JSON.stringify({ action: "start" , 
+        if (socketRef.current && connected) {
+            socketRef.current.send(JSON.stringify({ action: "initialize_grid", 
                 gridRows: gridRows, 
                 gridCols: gridCols, 
                 ants: ants
@@ -39,7 +39,7 @@ const WebSocketClient = (url) => {
           }
     };
     
-    return ({ws, connected, initialize_grid});
+    return ({ connected, initialize_grid});
 }
 
-export default WebSocketClient;
+export default useWebSocketClient;

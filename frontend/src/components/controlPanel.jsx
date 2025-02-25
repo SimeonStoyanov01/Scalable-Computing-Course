@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react"
-import StartButton from "./startButton"
-import StopButton from "./stopButton"
 
-function ControlPanel({gridRows, setGridRows, gridCols, setGridCols, ants, setAntNumber, saveSimulation, setSaveSimulation, simulationRunning, setSimulationStatus}) {
+function ControlPanel({gridRows, setGridRows, gridCols, setGridCols, ants, setAntNumber, saveSimulation, setSaveSimulation, simulationRunning, setSimulationStatus, initialize_grid}) {
+    const handleStart = () => {
+        setSimulationStatus(true);
+        initialize_grid({gridRows, gridCols, ants});
+    }
 
     return (
         <div>
@@ -63,10 +65,17 @@ function ControlPanel({gridRows, setGridRows, gridCols, setGridCols, ants, setAn
             </div>
             <hr/>
 
-            <StartButton simulationRunning={simulationRunning}
-                setSimulationStatus={setSimulationStatus} />
-            <StopButton simulationRunning={simulationRunning}
-                setSimulationStatus={setSimulationStatus} />
+            <div>
+                <button disabled={simulationRunning} onClick={(e) => handleStart()}>
+                    Start Simulation
+                </button>
+            </div>
+
+            <div>
+                <button disabled={!simulationRunning} onClick={(e) => setSimulationStatus(false)}>
+                    Stop
+                </button>
+            </div>
         </div>
     )
 }

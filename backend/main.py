@@ -12,7 +12,7 @@ async def get():
 
 @app.get("/initialize_grid")
 async def initialize_grid(websocket: WebSocket):
-    await websocket.send_text("Initialize grid")
+    # await websocket.send_text("status: Initialize Grid")
     return {"message": "Grid initialized"}
 
 
@@ -20,19 +20,20 @@ async def initialize_grid(websocket: WebSocket):
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     clients.append(websocket)
+    print("Client connected.")
     try:
         while True:
             data = await websocket.receive_text()
             command = json.loads(data)
             print(f'Command received: {command}')
 
-            if command['type'] == 'initialize_grid':
+            if command['action'] == 'initialize_grid':
                 grid_rows = command.get("gridRows")
                 grid_cols = command.get("gridCols")
                 ants = command.get("ants")
                 print(f"Initializing grid with: rows={grid_rows}, cols={grid_cols}, ants={ants}")
                 await initialize_grid(websocket)
-            if command['type'] == 'update_grid':
+            if command['action'] == 'update_grid':
                 await websocket.send_text("Update grid")
 
     except WebSocketDisconnect:
