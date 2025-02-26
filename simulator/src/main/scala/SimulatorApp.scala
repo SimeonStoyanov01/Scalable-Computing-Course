@@ -7,22 +7,43 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx.util.GraphGenerators
 import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction}
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types._
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 object SimulatorApp {
+  object MyUtils {
+    @transient val objectMapper = new ObjectMapper() // Transient!
+    objectMapper.registerModule(DefaultScalaModule)
+
+    def rowToJson(row: org.apache.spark.sql.Row): String = {
+      try {
+        objectMapper.writeValueAsString(row.getValuesMap(row.schema.fieldNames))
+      } catch {
+        case e: Exception =>
+          println(s"Error converting row to JSON: $e")
+          null
+      }
+    }
+
+    val rowToJsonUDF = udf(rowToJson _) // Define the UDF here
+  }
+
   def main(args: Array[String]): Unit = {
+
     val spark = SparkSession.builder.appName("Simulator").getOrCreate()
     val sc: SparkContext = spark.sparkContext
     import spark.implicits._
 
     val emptyCell = new Cell(false, Set())
 
-    val gridSize = 20
+    val gridSize = 4
     val edges = createGrid(sc, gridSize)
 
     val emptygraph: Graph[Cell, Direction.Value] = Graph.fromEdges(edges, emptyCell)
 
     var graph = emptygraph.mapVertices((id, _) =>
-    if (id == 206 || id == 246) new Cell(false, Set(new Ant(Direction.South))) else new Cell(false, Set()))
+    if (id == 6 || id == 8) new Cell(false, Set(new Ant(Direction.South))) else new Cell(false, Set()))
 
     def handleIncomingAnts(id: VertexId, cell: Cell, ants: Set[Ant]): Cell 
       = if (cell.ants.isEmpty) {
@@ -69,7 +90,10 @@ object SimulatorApp {
 
     graph.vertices.toDF
       // .withColumnRenamed("_2", "value")
-      .withColumn("value", col("_2").cast("string"))
+      // .withColumn("value", col("_2").cast("string"))
+      .withColumn("value", to_json(struct($"_2.*"))) 
+      // .withColumn("value", udf(MyUtils.rowToJson _).apply(struct("*"))) // Apply the UDF
+      .select("value") // Select only the JSON string column
       .write
       // .format("console")
       // .save()

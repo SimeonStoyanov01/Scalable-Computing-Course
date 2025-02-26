@@ -1,4 +1,5 @@
 package com.rug.ants.LangtonAntModel
+import com.fasterxml.jackson.annotation.{JsonCreator, JsonProperty}
 
 object Direction extends Enumeration {
     val North, East, South, West = Value
@@ -18,9 +19,13 @@ object Direction extends Enumeration {
             case East => North
         }
     }
+    @JsonCreator
+    def fromString(@JsonProperty("direction") direction: String): Value = {
+        values.find(_.toString == direction).getOrElse(throw new IllegalArgumentException(s"Invalid Direction: $direction"))
+    }
 }
 
-case class Ant(val direction: Direction.Value) extends Serializable {
+case class Ant(@JsonProperty("direction") direction: Direction.Value) extends Serializable {
     // override def toString: String = s"Ant(direction=$direction)"
     def display: String = s"${direction.toString.head}"
 }
