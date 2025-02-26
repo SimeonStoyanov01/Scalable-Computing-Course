@@ -1,0 +1,4 @@
+{
+    "flavor_name": "general.v1.tiny",
+    "image_name": "<container-name>:<tag>"
+}
