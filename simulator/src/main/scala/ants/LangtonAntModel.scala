@@ -30,7 +30,7 @@ case class Ant(@JsonProperty("direction") direction: Direction.Value) extends Se
     def display: String = s"${direction.toString.head}"
 }
 
-case class Cell(val colour: Boolean, val ants: Set[Ant]) extends Serializable {
+case class Cell(val colour: Boolean, val ants: Set[Ant], val rowInd: Int, val colInd: Int) extends Serializable {
     // override def toString: String = s"Cell(colour=$colour, ants=$ants)"
     def display: String = {
         if(ants.isEmpty) {

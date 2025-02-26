@@ -35,21 +35,33 @@ object SimulatorApp {
     val sc: SparkContext = spark.sparkContext
     import spark.implicits._
 
-    val emptyCell = new Cell(false, Set())
+    // val emptyCell = new Cell(false, Set())
 
-    val gridSize = 4
-    val edges = createGrid(sc, gridSize)
+    val gridSize = 20
+    // val edges = createGrid(sc, gridSize)
 
-    val emptygraph: Graph[Cell, Direction.Value] = Graph.fromEdges(edges, emptyCell)
+    // val emptygraph: Graph[Cell, Direction.Value] = Graph.fromEdges(edges, emptyCell)
+    val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridSize, spark)
 
-    var graph = emptygraph.mapVertices((id, _) =>
-    if (id == 6 || id == 8) new Cell(false, Set(new Ant(Direction.South))) else new Cell(false, Set()))
+    var graph = emptygraph.mapVertices((vertexId, oldCell) => {
+      val rowInd = (vertexId / gridSize).toInt 
+      val colInd = (vertexId % gridSize).toInt 
+
+      if (vertexId == 130 || vertexId == 170) { 
+        Cell(false, Set(Ant(Direction.South)), rowInd, colInd) 
+      } else {
+        Cell(false, Set.empty[Ant], rowInd, colInd)
+      }
+    })
+
+    // var graph = emptygraph.mapVertices((id, _) =>
+    // if (id == 6 || id == 8) new Cell(false, Set(new Ant(Direction.South))) else new Cell(false, Set()))
 
     def handleIncomingAnts(id: VertexId, cell: Cell, ants: Set[Ant]): Cell 
       = if (cell.ants.isEmpty) {
-        new Cell(cell.colour, ants) 
+        new Cell(cell.colour, ants, cell.rowInd, cell.colInd) 
       } else {
-        new Cell(!cell.colour, ants)
+        new Cell(!cell.colour, ants, cell.rowInd, cell.colInd)
       }
     
     def antRule(cell: Cell, direction: Direction.Value): Set[Ant] = {
@@ -73,13 +85,13 @@ object SimulatorApp {
 
     def clearAnts(id: VertexId, cell: Cell): Cell 
       = if (cell.ants.isEmpty) {
-        new Cell(cell.colour, Set()) 
+        new Cell(cell.colour, Set(), cell.rowInd, cell.colInd) 
       } else {
-        new Cell(!cell.colour, Set())
+        new Cell(!cell.colour, Set(), cell.rowInd, cell.colInd)
       }
     
 
-    for (i <- 1 to 2) {
+    for (i <- 1 to 20) {
       val messages = graph.aggregateMessages[Set[Ant]](msgAnts, mergeAnts).cache()
 
       graph = graph.mapVertices(clearAnts).cache()
@@ -99,7 +111,7 @@ object SimulatorApp {
       // .save()
       .format("kafka")
       .option("kafka.bootstrap.servers", "broker:29092")
-      .option("topic", "robintopic")
+      .option("topic", "quickstart.sampleData")
       .save()
 
     // while(true){
@@ -139,10 +151,46 @@ object SimulatorApp {
     for (row <- 0 until n) {
       for (col <- 0 until n) {
         val vertexId = (row * n + col).toLong
-        val cellInfo = vertices.find(_._1 == vertexId).map(_._2).getOrElse(new Cell(false, Set()))
+        val cellInfo = vertices.find(_._1 == vertexId).map(_._2).getOrElse(new Cell(false, Set(), 0, 0))
         print(s"${cellInfo.display} ")
       }
       println()
     }
   }
+  def constructGridGraph(n: Int, spark: SparkSession): Graph[Cell, Direction.Value] = {
+    import spark.implicits._
+
+    // 1. Create RDD of Cells (Vertices)
+    val verticesRDD: RDD[(VertexId, Cell)] = spark.sparkContext.parallelize(0 until n).flatMap { rowInd =>
+        (0 until n).map { colInd =>
+            val vertexId: VertexId = rowInd.toLong * n + colInd // Unique vertex ID based on row and col
+            (vertexId, Cell(false, Set.empty[Ant], rowInd, colInd)) // Initial cells are white and empty
+        }
+    }
+
+    // 2. Create RDD of Edges
+    val edgesRDD: RDD[Edge[Direction.Value]] = verticesRDD.flatMap { case (vertexId, cell) =>
+        val rowInd = cell.rowInd
+        val colInd = cell.colInd
+        val neighborIndices = Seq(
+            (rowInd - 1, colInd, Direction.North),
+            (rowInd + 1, colInd, Direction.South),
+            (rowInd, colInd - 1, Direction.West),
+            (rowInd, colInd + 1, Direction.East)
+        )
+
+        neighborIndices.flatMap { case (neighborRow, neighborCol, direction) =>
+            if (neighborRow >= 0 && neighborRow < n && neighborCol >= 0 && neighborCol < n) {
+                val srcVertexId = vertexId
+                val dstVertexId: VertexId = neighborRow.toLong * n + neighborCol
+                Some(Edge(srcVertexId, dstVertexId, direction))
+            } else {
+                None // Filter out of bounds edges
+            }
+        }
+    }
+
+    // 3. Construct the Graph
+    Graph(verticesRDD, edgesRDD)
+    }
 }
