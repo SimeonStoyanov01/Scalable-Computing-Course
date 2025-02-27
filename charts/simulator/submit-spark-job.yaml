@@ -1,0 +1,26 @@
+# This kubernetes job starts up all of the pods, pvcs, and svcs necessary to run the Apache Spark Simulator Application
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ants-simulator
+spec:
+  template:
+    spec:
+      containers:
+      - name: ants-simulator
+        image: makenjoy/ants-simulator:latest
+        command: [
+          "/opt/spark/bin/spark-submit",
+          "--name", "ants-simulator",
+          "--verbose", 
+          "--master", "k8s://https://192.168.49.2:8443",
+          #"--conf", "spark.kubernetes.driverEnv.SPARK_MASTER_URL=spark://rob-spark-master-svc:7077",
+          "--conf", "spark.kubernetes.container.image=makenjoy/ants-simulator:latest",
+          "--deploy-mode", "cluster",
+          "--class", "com.rug.SimulatorApp.SimulatorApp",
+          "--conf", "spark.kubernetes.authenticate.driver.serviceAccountName=spark",
+          #"--conf", "spark.kubernetes.file.upload.path='local:///tmp'",
+          "local:///app/out.jar"]
+      restartPolicy: Never
+      serviceAccountName: spark
+  backoffLimit: 4

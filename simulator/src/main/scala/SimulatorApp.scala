@@ -46,8 +46,8 @@ object SimulatorApp {
     var graph = emptygraph.mapVertices((vertexId, oldCell) => {
       val rowInd = (vertexId / gridSize).toInt 
       val colInd = (vertexId % gridSize).toInt 
-
-      if (vertexId == 130 || vertexId == 170) { 
+      //     printPrettyGrid(graph, gridSize) || vertexId == 170
+      if (vertexId == 130) { 
         Cell(false, Set(Ant(Direction.South)), rowInd, colInd) 
       } else {
         Cell(false, Set.empty[Ant], rowInd, colInd)
@@ -91,14 +91,14 @@ object SimulatorApp {
       }
     
 
-    for (i <- 1 to 20) {
+    for (i <- 1 to 10000) {
       val messages = graph.aggregateMessages[Set[Ant]](msgAnts, mergeAnts).cache()
 
       graph = graph.mapVertices(clearAnts).cache()
 
       graph = graph.joinVertices(messages)(handleIncomingAnts).cache()
+      printPrettyGrid(graph, gridSize)
     }
-    printPrettyGrid(graph, gridSize)
 
     graph.vertices.toDF
       // .withColumnRenamed("_2", "value")
