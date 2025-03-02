@@ -36,7 +36,12 @@ object SimulatorApp {
 
     val spark = SparkSession.builder.appName("Simulator").getOrCreate()
     val sc: SparkContext = spark.sparkContext
-    import spark.implicits._
+    // import spark.implicits._
+
+    val checkpointDir = "/tmp/graphx-checkpoints"
+    sc.setCheckpointDir(checkpointDir)
+    spark.conf.set("spark.graphx.pregel.checkpointInterval", 10)
+
 
     val gridSize = 50
 
@@ -128,6 +133,12 @@ object SimulatorApp {
       handleIncomingAnts, msgAnts, mergeCellUpdates)   
       
     printPrettyGrid(finalGraph, gridSize)
+
+    while(true){
+      scala.io.StdIn.readLine() // Hack for keeping spark open
+    }
+
+
     spark.stop()
     // producer.close()
   }
