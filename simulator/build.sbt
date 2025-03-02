@@ -23,8 +23,7 @@ libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.18.2"
 
 // libraryDependencies += "org.apache.kafka" % "kafka_2.13" % "3.9.0"
 
-// libraryDependencies += "org.apache.kafka" % "kafka-clients" % "3.9.0"
-
+libraryDependencies += "org.apache.kafka" % "kafka-clients" % "3.9.0"
 
 // dependencyOverrides += "com.github.luben" % "zstd-jni" % "1.5.5-4" 
 // assemblyMergeStrategy := {

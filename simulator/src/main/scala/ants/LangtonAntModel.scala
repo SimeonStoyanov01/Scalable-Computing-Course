@@ -25,12 +25,10 @@ object Direction extends Enumeration {
 class DirectionType extends TypeReference[Direction.type] // Hack because Scala enums are wierd
 
 case class Ant(@JsonScalaEnumeration(classOf[DirectionType]) direction: Direction.Value) extends Serializable {
-    // override def toString: String = s"Ant(direction=$direction)"
     def display: String = s"${direction.toString.head}"
 }
 
-case class Cell(val colour: Boolean, val ants: Set[Ant], val rowInd: Int, val colInd: Int) extends Serializable {
-    // override def toString: String = s"Cell(colour=$colour, ants=$ants)"
+case class Cell(val colour: Boolean, val ants: Set[Ant], val rowInd: Int, val colInd: Int, val time: Long) extends Serializable {
     def display: String = {
         if(ants.isEmpty) {
             if (colour) "(#)" else "[ ]"
@@ -47,6 +45,6 @@ case class Cell(val colour: Boolean, val ants: Set[Ant], val rowInd: Int, val co
 
 
 
-case class CellUpdate(val newColour: Option[Boolean], val incomingAnts: Option[Set[Ant]]) extends Serializable {
+case class CellUpdate(val newColour: Option[Boolean], val incomingAnts: Option[Set[Ant]], val newTime: Option[Long]) extends Serializable {
 
 }

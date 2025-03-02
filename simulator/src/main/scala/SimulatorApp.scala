@@ -9,44 +9,71 @@ import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction, CellUpdate}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import java.io.StringWriter
-
+import org.apache.kafka.clients.producer.{Producer, Callback, KafkaProducer, ProducerRecord, RecordMetadata}
+import org.apache.kafka.common.serialization.StringSerializer 
+import java.util.Properties
 
 object SimulatorApp {
   object MyUtils {
     @transient val objectMapper = new ObjectMapper() // Transient!
     objectMapper.registerModule(DefaultScalaModule)
   }
+
   def main(args: Array[String]): Unit = {
+    val props = new Properties()
+    props.put("bootstrap.servers", "localhost:9092")
+    // props.put("acks", "all")
+    // props.put("retries", 0)
+    // props.put("batch.size", 16384)
+    // props.put("linger.ms", 1)
+    // props.put("buffer.memory", 33554432)
+    props.put("key.serializer", classOf[StringSerializer].getName)
+    props.put("value.serializer", classOf[StringSerializer].getName)
+
+    // val producer: Producer[String, String] = new KafkaProducer[String, String](props)
+    // for (int i = 0; i < 100; i++)
+    //     producer.send(new ProducerRecord<String, String>("my-topic", Integer.toString(i), Integer.toString(i)));
+
     val spark = SparkSession.builder.appName("Simulator").getOrCreate()
     val sc: SparkContext = spark.sparkContext
     import spark.implicits._
 
-    val gridSize = 20
+    val gridSize = 50
 
     val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridSize, spark)
 
-    var graph = emptygraph.mapVertices((vertexId, oldCell) => {
-      val rowInd = (vertexId / gridSize).toInt 
-      val colInd = (vertexId % gridSize).toInt 
-      // || vertexId == 170
-      if (vertexId == 130) { 
-        Cell(false, Set(Ant(Direction.South)), rowInd, colInd) 
-      } else {
-        Cell(false, Set.empty[Ant], rowInd, colInd)
-      }
+    var graph = emptygraph.mapVertices((vertexId, cell) => {
+      // val rowInd = (vertexId / gridSize).toInt 
+      // val colInd = (vertexId % gridSize).toInt 
+      // 
+      // if (vertexId == 130) { 
+      //   Cell(false, Set(Ant(Direction.South)), rowInd, colInd, 0) 
+      // } else {
+      //   Cell(false, Set.empty[Ant], rowInd, colInd, 0)
+      // }
+      cell.copy(
+        ants = if(
+          vertexId == 1275 
+          // || vertexId == 170
+        ) {
+          Set(Ant(Direction.South))
+        } else {
+          Set.empty[Ant]
+        }
+      )
     })
 
     def handleIncomingAnts(id: VertexId, cell: Cell, cellUpdate: CellUpdate): Cell = {
+      val newCell = cell.copy(
+        colour = cellUpdate.newColour.getOrElse(cell.colour),
+        ants = cellUpdate.incomingAnts.getOrElse(cell.ants),
+        time = cellUpdate.newTime.getOrElse(cell.time) + 1
+      )
       val out = new StringWriter
-      MyUtils.objectMapper.writeValue(out, cellUpdate)
+      MyUtils.objectMapper.writeValue(out, newCell)
       val json = out.toString()
       println(s"ROBIN: $json")
-      new Cell(
-        cellUpdate.newColour.getOrElse(cell.colour),
-        cellUpdate.incomingAnts.getOrElse(cell.ants),
-        cell.rowInd,
-        cell.colInd
-      )
+      newCell
     }
 
     def antRule(cell: Cell, direction: Direction.Value): Set[Ant] = {
@@ -61,8 +88,8 @@ object SimulatorApp {
     def msgAnts(triplet: EdgeTriplet[Cell, Direction.Value]): Iterator[(VertexId, CellUpdate)] = {
       val dirAnts = antRule(triplet.srcAttr, triplet.attr)
       if (!dirAnts.isEmpty) {
-        val dstUpdate = new CellUpdate(None, Some(dirAnts))
-        val srcUpdate = new CellUpdate(Some(!triplet.dstAttr.colour), Some(Set()))
+        val dstUpdate = new CellUpdate(None, Some(dirAnts), Some(triplet.srcAttr.time))
+        val srcUpdate = new CellUpdate(Some(!triplet.dstAttr.colour), Some(Set()), Some(triplet.srcAttr.time))
         Iterator((triplet.dstId, dstUpdate), (triplet.srcId, srcUpdate))
       } else {
         Iterator()
@@ -76,7 +103,7 @@ object SimulatorApp {
           case (None, Some(x)) => Some(x)
           case (None, None) => None
           case (Some(x), Some(y)) => {
-            assume(x==y, "Error: Logical error one cell recieved multiple different colour updates!")
+            assume(x==y, "Error: Invariant not satisfied: One cell recieved multiple different colour updates.")
             Some(x)
           }
         },
@@ -86,13 +113,23 @@ object SimulatorApp {
           case (None, None) => None
           case (Some(x), Some(y)) => Some(x ++ y)
         },
+        (a.newTime, b.newTime) match {
+          case (Some(x), None) => Some(x)
+          case (None, Some(x)) => Some(x)
+          case (None, None) => None
+          case (Some(x), Some(y)) => {
+            assume(x==y, "Error: Invariant not satisfied: Time updates are not equal.")
+            Some(x)
+          }
+        },
       )
 
-    val finalGraph = Pregel(graph, new CellUpdate(None, None), 10)(
+    val finalGraph = Pregel(graph, new CellUpdate(None, None, None), 10000)(
       handleIncomingAnts, msgAnts, mergeCellUpdates)   
       
     printPrettyGrid(finalGraph, gridSize)
     spark.stop()
+    // producer.close()
   }
 
   def createGrid(sc: SparkContext, n: Int): RDD[Edge[Direction.Value]] = {
@@ -125,7 +162,7 @@ object SimulatorApp {
     for (row <- 0 until n) {
       for (col <- 0 until n) {
         val vertexId = (row * n + col).toLong
-        val cellInfo = vertices.find(_._1 == vertexId).map(_._2).getOrElse(new Cell(false, Set(), 0, 0))
+        val cellInfo = vertices.find(_._1 == vertexId).map(_._2).getOrElse(new Cell(false, Set(), 0, 0, 0))
         print(s"${cellInfo.display} ")
       }
       println()
@@ -138,7 +175,7 @@ object SimulatorApp {
     val verticesRDD: RDD[(VertexId, Cell)] = spark.sparkContext.parallelize(0 until n).flatMap { rowInd =>
         (0 until n).map { colInd =>
             val vertexId: VertexId = rowInd.toLong * n + colInd // Unique vertex ID based on row and col
-            (vertexId, Cell(false, Set.empty[Ant], rowInd, colInd)) // Initial cells are white and empty
+            (vertexId, Cell(false, Set.empty[Ant], rowInd, colInd, 0)) // Initial cells are white and empty
         }
     }
 
