@@ -97,22 +97,24 @@ object SimulatorApp {
       graph = graph.mapVertices(clearAnts).cache()
 
       graph = graph.joinVertices(messages)(handleIncomingAnts).cache()
-      printPrettyGrid(graph, gridSize)
-    }
 
-    graph.vertices.toDF
-      // .withColumnRenamed("_2", "value")
-      // .withColumn("value", col("_2").cast("string"))
-      .withColumn("value", to_json(struct($"_2.*"))) 
-      // .withColumn("value", udf(MyUtils.rowToJson _).apply(struct("*"))) // Apply the UDF
-      .select("value") // Select only the JSON string column
-      .write
-      // .format("console")
-      // .save()
-      .format("kafka")
-      .option("kafka.bootstrap.servers", "broker:29092")
-      .option("topic", "quickstart.sampleData")
-      .save()
+      // printPrettyGrid(graph, gridSize)
+      println(s"Robin: Current iteration=$i")
+
+      graph.vertices.toDF
+        // .withColumnRenamed("_2", "value")
+        // .withColumn("value", col("_2").cast("string"))
+        .withColumn("value", to_json(struct($"_2.*"))) 
+        // .withColumn("value", udf(MyUtils.rowToJson _).apply(struct("*"))) // Apply the UDF
+        .select("value") // Select only the JSON string column
+        .write
+        .format("console")
+        // .save()
+        //.format("kafka")
+        //.option("kafka.bootstrap.servers", "ants-kafka.default.svc.cluster.local:9092")
+        //.option("topic", "quickstart.sampleData")
+        .save()
+    }
 
     // while(true){
     //    scala.io.StdIn.readLine() // Hack for keeping spark open

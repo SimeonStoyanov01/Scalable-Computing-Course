@@ -3,6 +3,10 @@ replicaCount: 1
 controller:
   replicaCount: 1
 
+listeners:
+  client:
+    protocol: "PLAINTEXT"
+
 extraDeploy:
   - |
     apiVersion: apps/v1

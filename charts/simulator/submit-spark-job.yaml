@@ -23,4 +23,4 @@ spec:
           "local:///app/out.jar"]
       restartPolicy: Never
       serviceAccountName: spark
-  backoffLimit: 4
+  backoffLimit: 0
