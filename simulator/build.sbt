@@ -8,12 +8,13 @@ libraryDependencies += "org.apache.spark" %% "spark-sql" % "3.5.4" % "provided"
 
 libraryDependencies += "org.apache.spark" %% "spark-graphx" % "3.5.4" % "provided"
 
-libraryDependencies += "org.apache.spark" %% "spark-streaming-kafka-0-10" % "3.5.4"
+// libraryDependencies += "org.apache.spark" %% "spark-streaming-kafka-0-10" % "3.5.4"
 
-libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % "3.5.4"
+// libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % "3.5.4"
 
 // libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.18.2"
 libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.18.2"
+
 // libraryDependencies += "com.fasterxml.jackson.core" % "jackson-annotations" % "2.18.2"
 
 // libraryDependencies += "org.apache.kafka" %% "kafka-streams" % "3.9.0"

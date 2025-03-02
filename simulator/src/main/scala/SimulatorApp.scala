@@ -2,51 +2,33 @@ package com.rug.SimulatorApp
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkContext
-import org.apache.spark.graphx.{EdgeContext, EdgeDirection, Edge, EdgeTriplet, Graph, VertexId}
+import org.apache.spark.graphx.{EdgeContext, EdgeDirection, Edge, EdgeTriplet, Graph, VertexId, Pregel}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx.util.GraphGenerators
-import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction}
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
+import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction, CellUpdate}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import java.io.StringWriter
+
 
 object SimulatorApp {
   object MyUtils {
     @transient val objectMapper = new ObjectMapper() // Transient!
     objectMapper.registerModule(DefaultScalaModule)
-
-    def rowToJson(row: org.apache.spark.sql.Row): String = {
-      try {
-        objectMapper.writeValueAsString(row.getValuesMap(row.schema.fieldNames))
-      } catch {
-        case e: Exception =>
-          println(s"Error converting row to JSON: $e")
-          null
-      }
-    }
-
-    val rowToJsonUDF = udf(rowToJson _) // Define the UDF here
   }
-
   def main(args: Array[String]): Unit = {
-
     val spark = SparkSession.builder.appName("Simulator").getOrCreate()
     val sc: SparkContext = spark.sparkContext
     import spark.implicits._
 
-    // val emptyCell = new Cell(false, Set())
-
     val gridSize = 20
-    // val edges = createGrid(sc, gridSize)
 
-    // val emptygraph: Graph[Cell, Direction.Value] = Graph.fromEdges(edges, emptyCell)
     val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridSize, spark)
 
     var graph = emptygraph.mapVertices((vertexId, oldCell) => {
       val rowInd = (vertexId / gridSize).toInt 
       val colInd = (vertexId % gridSize).toInt 
-      //     printPrettyGrid(graph, gridSize) || vertexId == 170
+      // || vertexId == 170
       if (vertexId == 130) { 
         Cell(false, Set(Ant(Direction.South)), rowInd, colInd) 
       } else {
@@ -54,16 +36,19 @@ object SimulatorApp {
       }
     })
 
-    // var graph = emptygraph.mapVertices((id, _) =>
-    // if (id == 6 || id == 8) new Cell(false, Set(new Ant(Direction.South))) else new Cell(false, Set()))
+    def handleIncomingAnts(id: VertexId, cell: Cell, cellUpdate: CellUpdate): Cell = {
+      val out = new StringWriter
+      MyUtils.objectMapper.writeValue(out, cellUpdate)
+      val json = out.toString()
+      println(s"ROBIN: $json")
+      new Cell(
+        cellUpdate.newColour.getOrElse(cell.colour),
+        cellUpdate.incomingAnts.getOrElse(cell.ants),
+        cell.rowInd,
+        cell.colInd
+      )
+    }
 
-    def handleIncomingAnts(id: VertexId, cell: Cell, ants: Set[Ant]): Cell 
-      = if (cell.ants.isEmpty) {
-        new Cell(cell.colour, ants, cell.rowInd, cell.colInd) 
-      } else {
-        new Cell(!cell.colour, ants, cell.rowInd, cell.colInd)
-      }
-    
     def antRule(cell: Cell, direction: Direction.Value): Set[Ant] = {
       val newAnts = if(cell.colour) { // Black square
         cell.ants.map(ant => new Ant(ant.direction.rotateCounterClockwise))
@@ -73,53 +58,40 @@ object SimulatorApp {
       newAnts.filter(ant => ant.direction == direction)
     }
 
-    def msgAnts(triplet: EdgeContext[Cell, Direction.Value, Set[Ant]]) {
-      // val dirAnts = triplet.srcAttr.ants.filter(ant => ant.direction == triplet.attr)
+    def msgAnts(triplet: EdgeTriplet[Cell, Direction.Value]): Iterator[(VertexId, CellUpdate)] = {
       val dirAnts = antRule(triplet.srcAttr, triplet.attr)
       if (!dirAnts.isEmpty) {
-        triplet.sendToDst(dirAnts)
-      }
-    }
-
-    def mergeAnts(a: Set[Ant], b: Set[Ant]): Set[Ant] = a ++ b
-
-    def clearAnts(id: VertexId, cell: Cell): Cell 
-      = if (cell.ants.isEmpty) {
-        new Cell(cell.colour, Set(), cell.rowInd, cell.colInd) 
+        val dstUpdate = new CellUpdate(None, Some(dirAnts))
+        val srcUpdate = new CellUpdate(Some(!triplet.dstAttr.colour), Some(Set()))
+        Iterator((triplet.dstId, dstUpdate), (triplet.srcId, srcUpdate))
       } else {
-        new Cell(!cell.colour, Set(), cell.rowInd, cell.colInd)
+        Iterator()
       }
-    
-
-    for (i <- 1 to 10000) {
-      val messages = graph.aggregateMessages[Set[Ant]](msgAnts, mergeAnts).cache()
-
-      graph = graph.mapVertices(clearAnts).cache()
-
-      graph = graph.joinVertices(messages)(handleIncomingAnts).cache()
-
-      // printPrettyGrid(graph, gridSize)
-      println(s"Robin: Current iteration=$i")
-
-      graph.vertices.toDF
-        // .withColumnRenamed("_2", "value")
-        // .withColumn("value", col("_2").cast("string"))
-        .withColumn("value", to_json(struct($"_2.*"))) 
-        // .withColumn("value", udf(MyUtils.rowToJson _).apply(struct("*"))) // Apply the UDF
-        .select("value") // Select only the JSON string column
-        .write
-        .format("console")
-        // .save()
-        //.format("kafka")
-        //.option("kafka.bootstrap.servers", "ants-kafka.default.svc.cluster.local:9092")
-        //.option("topic", "quickstart.sampleData")
-        .save()
     }
+    
+    def mergeCellUpdates(a: CellUpdate, b: CellUpdate): CellUpdate = 
+      new CellUpdate(
+        (a.newColour, b.newColour) match {
+          case (Some(x), None) => Some(x)
+          case (None, Some(x)) => Some(x)
+          case (None, None) => None
+          case (Some(x), Some(y)) => {
+            assume(x==y, "Error: Logical error one cell recieved multiple different colour updates!")
+            Some(x)
+          }
+        },
+        (a.incomingAnts, b.incomingAnts) match {
+          case (Some(x), None) => Some(x)
+          case (None, Some(y)) => Some(y)
+          case (None, None) => None
+          case (Some(x), Some(y)) => Some(x ++ y)
+        },
+      )
 
-    // while(true){
-    //    scala.io.StdIn.readLine() // Hack for keeping spark open
-    // }
-
+    val finalGraph = Pregel(graph, new CellUpdate(None, None), 10)(
+      handleIncomingAnts, msgAnts, mergeCellUpdates)   
+      
+    printPrettyGrid(finalGraph, gridSize)
     spark.stop()
   }
 
