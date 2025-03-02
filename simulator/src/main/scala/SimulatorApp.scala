@@ -20,30 +20,34 @@ object SimulatorApp {
   }
 
   def main(args: Array[String]): Unit = {
-    val props = new Properties()
-    props.put("bootstrap.servers", "localhost:9092")
+    //val props = new Properties()
+    //props.put("bootstrap.servers", "localhost:9092")
     // props.put("acks", "all")
     // props.put("retries", 0)
     // props.put("batch.size", 16384)
     // props.put("linger.ms", 1)
     // props.put("buffer.memory", 33554432)
-    props.put("key.serializer", classOf[StringSerializer].getName)
-    props.put("value.serializer", classOf[StringSerializer].getName)
+    //props.put("key.serializer", classOf[StringSerializer].getName)
+    //props.put("value.serializer", classOf[StringSerializer].getName)
 
     // val producer: Producer[String, String] = new KafkaProducer[String, String](props)
     // for (int i = 0; i < 100; i++)
     //     producer.send(new ProducerRecord<String, String>("my-topic", Integer.toString(i), Integer.toString(i)));
 
-    val spark = SparkSession.builder.appName("Simulator").getOrCreate()
+    val checkpointDir = "/tmp/graphx-checkpoints"
+
+    val spark = SparkSession.builder
+      .appName("Simulator")
+      // .config("spark.checkpoint.dir", checkpointDir) // Seems to not work
+      .config("spark.graphx.pregel.checkpointInterval", 5)
+      .getOrCreate()
     val sc: SparkContext = spark.sparkContext
+    sc.setCheckpointDir(checkpointDir)
+    // sc.setLogLevel("DEBUG")
     // import spark.implicits._
 
-    val checkpointDir = "/tmp/graphx-checkpoints"
-    sc.setCheckpointDir(checkpointDir)
-    spark.conf.set("spark.graphx.pregel.checkpointInterval", 10)
 
-
-    val gridSize = 50
+    val gridSize = 100
 
     val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridSize, spark)
 
@@ -58,7 +62,7 @@ object SimulatorApp {
       // }
       cell.copy(
         ants = if(
-          vertexId == 1275 
+          vertexId == 5050
           // || vertexId == 170
         ) {
           Set(Ant(Direction.South))
@@ -129,15 +133,18 @@ object SimulatorApp {
         },
       )
 
+
+
     val finalGraph = Pregel(graph, new CellUpdate(None, None, None), 10000)(
       handleIncomingAnts, msgAnts, mergeCellUpdates)   
       
+    finalGraph.checkpoint()
+
     printPrettyGrid(finalGraph, gridSize)
 
-    while(true){
-      scala.io.StdIn.readLine() // Hack for keeping spark open
-    }
-
+    // while(true){
+    //scala.io.StdIn.readLine() // Hack for keeping spark open
+    // }
 
     spark.stop()
     // producer.close()
