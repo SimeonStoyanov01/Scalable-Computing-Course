@@ -31,6 +31,7 @@ const useWebSocketClient = (url) => {
     
     const initialize_grid = ({gridRows, gridCols, ants}) => {
         if (socketRef.current && connected) {
+            console.log("Sending grid initialization command to the server: gridRows=", gridRows, "gridCols=", gridCols, "ants=", ants);
             socketRef.current.send(JSON.stringify({ action: "initialize_grid", 
                 gridRows: gridRows, 
                 gridCols: gridCols, 
