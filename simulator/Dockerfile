@@ -24,6 +24,9 @@ COPY --from=0 /app/target/scala-2.12/Simulator-assembly-1.0.jar out.jar
 
 USER root
 RUN chown -R 185:185 /app && chmod 777 /app/*
+RUN mkdir /checkpoint
+RUN touch /checkpoint/hello
+RUN chown -R 185:185 /checkpoint && chmod 777 /checkpoint/*
 
 WORKDIR /work-dir
 
