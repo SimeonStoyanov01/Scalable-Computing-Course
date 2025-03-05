@@ -1,4 +1,6 @@
 {
-    "flavor_name": "general.v1.tiny",
-    "image_name": "<container-name>:<tag>"
+    "image_name": "<container-name>:<tag>",
+    "public_network": "external_unfiltered",
+    "flavor_name_master": "",
+    "flavor_name_worker": ""
 }
