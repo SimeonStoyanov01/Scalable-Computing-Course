@@ -10,7 +10,7 @@ RUN sbt update
 COPY src /app/src
 
 # RUN sbt package
-RUN sbt assembly
+RUN sbt -J-Xmx4G assembly
 
 # CMD ["/bin/bash"]
 
@@ -51,3 +51,13 @@ USER spark
 # CMD ["/opt/spark/bin/spark-submit", "--verbose", "out.jar"]
 # CMD ["/opt/spark/bin/spark-submit", "--verbose", "--packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1", "out.jar"]
 # CMD ["/bin/bash"]
+CMD [ "/opt/spark/bin/spark-submit", \
+  "--name", "ants-simulator", \
+  "--verbose", \
+  "--class", "com.rug.SimulatorApp.SimulatorApp", \
+  "--conf", "spark.hadoop.fs.s3a.endpoint=http://myminio-hl.default.svc.cluster.local:9000", \
+  "--conf", "spark.hadoop.fs.s3a.access.key=minio", \
+  "--conf", "spark.hadoop.fs.s3a.secret.key=minio123", \
+  "--conf", "spark.hadoop.fs.s3a.path.style.access=true", \
+  "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem", \
+  "local:///app/out.jar"] 

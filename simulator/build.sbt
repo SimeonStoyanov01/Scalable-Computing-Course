@@ -2,6 +2,8 @@ name := "Simulator"
 organization := "com.rug"
 version := "1.0"
 
+logLevel := Level.Debug
+
 scalaVersion := "2.12.18"
 
 libraryDependencies += "org.apache.spark" %% "spark-sql" % "3.5.4" % "provided"
@@ -16,9 +18,10 @@ libraryDependencies += "org.apache.spark" %% "spark-graphx" % "3.5.4" % "provide
 
 // libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.18.2"
 
-libraryDependencies += "org.apache.hadoop" % "hadoop-common" % "3.4.1"
+libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "3.3.4"
 
-libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.4.1"
+libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.3.4"
+// libraryDependencies += "com.amazonaws" % "aws-java-sdk-core" % "1.12.720"
 
 //libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "3.4.1"
 
@@ -41,18 +44,21 @@ libraryDependencies += "org.apache.kafka" % "kafka-clients" % "3.9.0"
 //   case "Log4j2Plugins.dat" => MergeStrategy.discard
 //   case x => MergeStrategy.first // Take the first occurrence for everything else
 // }
-//assembly / assemblyMergeStrategy := {
+//ThisBuild / assemblyMergeStrategy := {
+//  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
 //  case _ => MergeStrategy.first
-//  case x =>
-//    val oldStrategy = (assembly / assemblyMergeStrategy).value
-//    oldStrategy(x)
 //} 
 ThisBuild / assemblyMergeStrategy := {
-  case PathList("org", xs @ _*)         => MergeStrategy.first
+  // case PathList("org", xs @ _*)         => MergeStrategy.first
+  case PathList("org", "checkerframework", xs @ _*) => MergeStrategy.first
+  case PathList("org", "apache", "commons", xs @ _*) => MergeStrategy.first
+  case PathList("org", "apache", "hadoop", "yarn", xs @ _*) => MergeStrategy.first
+  case PathList("org", "apache", "hadoop", "security", xs @ _*) => MergeStrategy.first
+  case PathList("com","google","errorprone", xs @ _*)         => MergeStrategy.first
   case PathList("javax", xs @ _*)         => MergeStrategy.first
-//  case PathList("METAINF", xs @ _*)         => MergeStrategy.first
+  case PathList("METAINF", xs @ _*)         => MergeStrategy.first
   case x if x.endsWith("module-info.class") => MergeStrategy.discard
-  case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.discard
+  case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.concat
 
   //case PathList(ps @ _*) if ps.last endsWith ".html" => MergeStrategy.first
   //case "application.conf"                            => MergeStrategy.concat

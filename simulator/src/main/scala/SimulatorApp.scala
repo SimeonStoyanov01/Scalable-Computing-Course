@@ -12,7 +12,6 @@ import java.io.StringWriter
 import org.apache.kafka.clients.producer.{Producer, Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.serialization.StringSerializer 
 import java.util.Properties
-import org.apache.hadoop.fs.s3a.S3AFileSystem
 
 object SimulatorApp {
   object MyUtils {
@@ -40,12 +39,15 @@ object SimulatorApp {
     val spark = SparkSession.builder
       .appName("Simulator")
       // .config("spark.checkpoint.dir", checkpointDir) // Seems to not work
-      .config("spark.graphx.pregel.checkpointInterval", 5)
+      .config("spark.graphx.pregel.checkpointInterval", 20)
       .getOrCreate()
 
     val sc: SparkContext = spark.sparkContext
-    println(s"ROBIN: ${spark.conf.get("spark.hadoop.fs.s3a.endpoint")}")
+    println("helloooosdas")
+    println("sasasasasasas")
+    //println(s"ROBIN: ${spark.conf.get("spark.hadoop.fs.s3a.endpoint")}")
     sc.setCheckpointDir(checkpointDir)
+    println("done checking")
     // sc.setLogLevel("DEBUG")
     // import spark.implicits._
 
@@ -137,12 +139,10 @@ object SimulatorApp {
       )
 
 
-
+    println("pregellssss")
     val finalGraph = Pregel(graph, new CellUpdate(None, None, None), 10000)(
       handleIncomingAnts, msgAnts, mergeCellUpdates)   
       
-    finalGraph.checkpoint()
-
     printPrettyGrid(finalGraph, gridSize)
 
     // while(true){

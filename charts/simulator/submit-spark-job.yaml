@@ -8,17 +8,24 @@ spec:
     spec:
       containers:
       - name: ants-simulator
-        image: makenjoy/ants-simulator:latest
+        image: makenjoy/ants-simulator:test2
         command: [
           "/opt/spark/bin/spark-submit",
           "--name", "ants-simulator",
           "--verbose", 
           "--master", "k8s://https://192.168.49.2:8443",
           #"--conf", "spark.kubernetes.driverEnv.SPARK_MASTER_URL=spark://rob-spark-master-svc:7077",
-          "--conf", "spark.kubernetes.container.image=makenjoy/ants-simulator:latest",
+          "--conf", "spark.kubernetes.container.image.pullPolicy=Always",
+          "--conf", "spark.kubernetes.container.image=makenjoy/ants-simulator:test2",
           "--deploy-mode", "cluster",
           "--class", "com.rug.SimulatorApp.SimulatorApp",
           "--conf", "spark.kubernetes.authenticate.driver.serviceAccountName=spark",
+          "--conf", "spark.hadoop.fs.s3a.endpoint=http://myminio-hl.myminio.svc.cluster.local:9000", 
+          "--conf", "spark.hadoop.fs.s3a.access.key=minio",
+          "--conf", "spark.hadoop.fs.s3a.secret.key=minio123",
+          "--conf", "spark.hadoop.fs.s3a.path.style.access=true",
+          "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem",
+
           #"--conf", "spark.kubernetes.file.upload.path='local:///tmp'",
           "local:///app/out.jar"]
       restartPolicy: Never
