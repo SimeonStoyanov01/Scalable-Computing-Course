@@ -10,8 +10,11 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import java.io.StringWriter
 import org.apache.kafka.clients.producer.{Producer, Callback, KafkaProducer, ProducerRecord, RecordMetadata}
-import org.apache.kafka.common.serialization.StringSerializer 
+import org.apache.kafka.clients.consumer.{Consumer, KafkaConsumer, ConsumerRecords, ConsumerRecord}
+import org.apache.kafka.common.serialization.{StringSerializer, StringDeserializer} 
 import java.util.Properties
+import java.util.Arrays
+import scala.collection.JavaConverters._
 
 object SimulatorApp {
   object MyUtils {
@@ -19,7 +22,69 @@ object SimulatorApp {
     objectMapper.registerModule(DefaultScalaModule)
   }
 
+  // Simulator Context
+  object SimCont {
+    val props = new Properties()
+    //props.put("bootstrap.servers", "ants-kafka.default.svc.cluster.local:9092")
+    //props.put("bootstrap.servers", "localhost:9092")
+    props.put("bootstrap.servers", "192.168.49.2:30092")
+    props.put("acks", "all")
+    // props.put("retries", 0)
+    // props.put("batch.size", 16384)
+    // props.put("linger.ms", 1)
+    // props.put("buffer.memory", 33554432)
+    props.put("key.serializer", classOf[StringSerializer].getName)
+    props.put("value.serializer", classOf[StringSerializer].getName)
+    props.put("key.deserializer", classOf[StringDeserializer].getName)
+    props.put("value.deserializer", classOf[StringDeserializer].getName)
+    props.put("group.id", "my-consumer-group")
+
+    @transient lazy val producer: Producer[String, String] = new KafkaProducer[String, String](props)
+    @transient lazy val consumer: Consumer[String, String] = new KafkaConsumer[String, String](props)
+    SimCont.consumer.subscribe(Arrays.asList("jobs"))
+
+    val checkpointDir = "s3a://checkpoints/"
+
+    val spark = SparkSession.builder
+      .appName("Simulator")
+      // .config("spark.checkpoint.dir", checkpointDir) // Seems to not work
+      .config("spark.graphx.pregel.checkpointInterval", 20)
+      .getOrCreate()
+
+    val sc: SparkContext = spark.sparkContext
+    println("setting checkpointing")
+    //println(s"ROBIN: ${spark.conf.get("spark.hadoop.fs.s3a.endpoint")}")
+    sc.setCheckpointDir(checkpointDir)
+    println("done setting checkpointing")
+    // sc.setLogLevel("DEBUG")
+    // import spark.implicits._
+  }
+
   def main(args: Array[String]): Unit = {
+
+    println("Waiting for jobs")
+    while (true) {
+      val jobs = SimCont.consumer.poll(2000)
+      for (job <- jobs.asScala) {
+        println(s"Recieved job=$job")
+        runSimulation()
+      }
+      SimCont.consumer.commitSync()
+    }
+
+    // while(true){
+    //scala.io.StdIn.readLine() // Hack for keeping spark open
+    // }
+
+    SimCont.spark.stop()
+    SimCont.producer.close()
+  }
+
+  def runSimulation() {
+    println(s"Running simulation!")
+    val gridSize = 100
+
+    val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridSize, SimCont.spark)
     val props = new Properties()
     //props.put("bootstrap.servers", "ants-kafka.default.svc.cluster.local:9092")
     //props.put("bootstrap.servers", "localhost:9092")
@@ -50,19 +115,7 @@ object SimulatorApp {
     // sc.setLogLevel("DEBUG")
     // import spark.implicits._
 
-    val gridSize = 100
-
-    val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridSize, spark)
-
     var graph = emptygraph.mapVertices((vertexId, cell) => {
-      // val rowInd = (vertexId / gridSize).toInt 
-      // val colInd = (vertexId % gridSize).toInt 
-      // 
-      // if (vertexId == 130) { 
-      //   Cell(false, Set(Ant(Direction.South)), rowInd, colInd, 0) 
-      // } else {
-      //   Cell(false, Set.empty[Ant], rowInd, colInd, 0)
-      // }
       cell.copy(
         ants = if(
           vertexId == 5050
@@ -85,7 +138,7 @@ object SimulatorApp {
       MyUtils.objectMapper.writeValue(out, newCell)
       val json = out.toString()
       println(s"ROBIN: SENDING $json")
-      producer.send(new ProducerRecord[String, String]("new-ants2", "lmaoheaderamirite", json));
+      SimCont.producer.send(new ProducerRecord[String, String]("new-ants2", "lmaoheaderamirite", json));
       newCell
     }
 
@@ -140,18 +193,12 @@ object SimulatorApp {
 
     // println("pregellssss")
     println(s"ROBIN: starting pregel")
-    val finalGraph = Pregel(graph, new CellUpdate(None, None, None), 10000)(
+    val finalGraph = Pregel(graph, new CellUpdate(None, None, None), 30)(
       handleIncomingAnts, msgAnts, mergeCellUpdates)   
     println(s"ROBIN: done pregelling")
       
     printPrettyGrid(finalGraph, gridSize)
 
-    // while(true){
-    //scala.io.StdIn.readLine() // Hack for keeping spark open
-    // }
-
-    spark.stop()
-    producer.close()
   }
 
   def createGrid(sc: SparkContext, n: Int): RDD[Edge[Direction.Value]] = {
