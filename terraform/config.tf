@@ -10,25 +10,29 @@ data "cloudinit_config" "master" {
   part {
     content_type = "text/cloud-config"
     content = templatefile("${path.module}/configs/cloud-init_master.yaml", {
-      sshkey   = file("${path.module}/id_rsa.pub"),
-      password = var.ubuntu_password,
       K3S_TOKEN = var.K3S_TOKEN
     })
   }
-
-  part {
-    filename   = "cloud-init-master.yaml"
+   part {
     content_type = "text/cloud-config"
-    content = templatefile("${path.module}/configs/cloud-init_master.yaml", {
-      imagename = var.image_name,
-      K3S_TOKEN = var.K3S_TOKEN
+    content = templatefile("${path.module}/configs/snippets/users.yaml", {
+      sshkey   = file("${path.module}/id_rsa.pub"),
+      password = var.ubuntu_password
     })
-  }  
+  }
+
 }
 
 data "cloudinit_config" "worker" {
   gzip          = true
   base64_encode = true
+  part {
+    content_type = "text/cloud-config"
+    content = templatefile("${path.module}/configs/snippets/users.yaml", {
+      sshkey   = file("${path.module}/id_rsa.pub"),
+      password = var.ubuntu_password
+    })
+  }
 
   part {
     filename     = "cloud-init-worker.yaml"
