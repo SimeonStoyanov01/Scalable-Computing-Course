@@ -1,4 +1,5 @@
 #!/bin/sh
+
 /opt/spark/bin/spark-submit \
   --name "ants-simulator" \
   --verbose \

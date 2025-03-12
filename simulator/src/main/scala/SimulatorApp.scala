@@ -5,7 +5,6 @@ import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{EdgeContext, EdgeDirection, Edge, EdgeTriplet, Graph, VertexId, Pregel}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx.util.GraphGenerators
-import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction, CellUpdate}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import java.io.StringWriter
@@ -15,6 +14,9 @@ import org.apache.kafka.common.serialization.{StringSerializer, StringDeserializ
 import java.util.Properties
 import java.util.Arrays
 import scala.collection.JavaConverters._
+import scala.util.{Try, Success, Failure}
+import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction, CellUpdate}
+import com.rug.jobs.JobRequest
 
 object SimulatorApp {
   object MyUtils {
@@ -42,62 +44,35 @@ object SimulatorApp {
     @transient lazy val producer: Producer[String, String] = new KafkaProducer[String, String](props)
     @transient lazy val consumer: Consumer[String, String] = new KafkaConsumer[String, String](props)
     SimCont.consumer.subscribe(Arrays.asList("jobs"))
-
-    val checkpointDir = "s3a://checkpoints/"
-
-    val spark = SparkSession.builder
-      .appName("Simulator")
-      // .config("spark.checkpoint.dir", checkpointDir) // Seems to not work
-      .config("spark.graphx.pregel.checkpointInterval", 20)
-      .getOrCreate()
-
-    val sc: SparkContext = spark.sparkContext
-    println("setting checkpointing")
-    //println(s"ROBIN: ${spark.conf.get("spark.hadoop.fs.s3a.endpoint")}")
-    sc.setCheckpointDir(checkpointDir)
-    println("done setting checkpointing")
-    // sc.setLogLevel("DEBUG")
-    // import spark.implicits._
   }
 
   def main(args: Array[String]): Unit = {
-
     println("Waiting for jobs")
     while (true) {
       val jobs = SimCont.consumer.poll(2000)
       for (job <- jobs.asScala) {
-        println(s"Recieved job=$job")
-        runSimulation()
+        println(s"Received job=$job")
+        Try {
+          MyUtils.objectMapper.readValue(job.value(), classOf[JobRequest])
+        } match {
+          case Success(jobRequest) =>
+            println(s"Parsed jobRequest=$jobRequest")
+            runSimulation(jobRequest)
+          case Failure(e) =>
+            println(s"Failed to parse job request: ${e.getMessage}")
+            println(s"Skipping and commiting message")
+        }
       }
       SimCont.consumer.commitSync()
     }
 
-    // while(true){
-    //scala.io.StdIn.readLine() // Hack for keeping spark open
-    // }
-
-    SimCont.spark.stop()
     SimCont.producer.close()
   }
 
-  def runSimulation() {
-    println(s"Running simulation!")
-    val gridSize = 100
-
-    val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridSize, SimCont.spark)
-    val props = new Properties()
-    //props.put("bootstrap.servers", "ants-kafka.default.svc.cluster.local:9092")
-    //props.put("bootstrap.servers", "localhost:9092")
-    props.put("bootstrap.servers", "192.168.49.2:30092")
-    props.put("acks", "all")
-    // props.put("retries", 0)
-    // props.put("batch.size", 16384)
-    // props.put("linger.ms", 1)
-    // props.put("buffer.memory", 33554432)
-    props.put("key.serializer", classOf[StringSerializer].getName)
-    props.put("value.serializer", classOf[StringSerializer].getName)
-
-    @transient lazy val producer: Producer[String, String] = new KafkaProducer[String, String](props)
+  def runSimulation(jobRequest: JobRequest) {
+    println(s"Running simulation with jobRequest: $jobRequest")
+    val gridRowSize = jobRequest.gridRows
+    val gridColSize = jobRequest.gridCols
 
     val checkpointDir = "s3a://checkpoints/"
 
@@ -114,6 +89,7 @@ object SimulatorApp {
     println("done setting checkpointing")
     // sc.setLogLevel("DEBUG")
     // import spark.implicits._
+    val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridRowSize, gridColSize, spark)
 
     var graph = emptygraph.mapVertices((vertexId, cell) => {
       cell.copy(
@@ -197,53 +173,31 @@ object SimulatorApp {
       handleIncomingAnts, msgAnts, mergeCellUpdates)   
     println(s"ROBIN: done pregelling")
       
-    printPrettyGrid(finalGraph, gridSize)
+    printPrettyGrid(finalGraph, gridRowSize, gridColSize)
 
+    spark.stop()
   }
 
-  def createGrid(sc: SparkContext, n: Int): RDD[Edge[Direction.Value]] = {
-    val edgesRDD: RDD[Edge[Direction.Value]] = sc.parallelize(0 until (n * n)).flatMap { vertexIdLong =>
-      val vertexId = vertexIdLong.toLong
-      var neighborEdges = Seq[Edge[Direction.Value]]()
-
-      // Edge to East (right)
-      if ((vertexId + 1) < (n * n) && (vertexId % n) < (n - 1)) { // Not last column and within bounds
-        neighborEdges = neighborEdges ++ Seq(
-          Edge(vertexId, vertexId + 1, Direction.East),
-          Edge(vertexId + 1, vertexId, Direction.West) // Reverse direction
-        )
-      }
-
-      // Edge to South (down)
-      if ((vertexId + n) < (n * n)) { // Within bounds
-        neighborEdges = neighborEdges ++ Seq(
-          Edge(vertexId, vertexId + n, Direction.South),
-          Edge(vertexId + n, vertexId, Direction.North) // Reverse direction
-        )
-      }
-      neighborEdges
-    }
-    edgesRDD
-  }
-  def printPrettyGrid(graph: Graph[Cell, Direction.Value], n: Int): Unit = {
+  def printPrettyGrid(graph: Graph[Cell, Direction.Value], rowSize: Int, colSize: Int): Unit = {
     val vertices = graph.vertices.collect().sortBy(_._1)
 
-    for (row <- 0 until n) {
-      for (col <- 0 until n) {
-        val vertexId = (row * n + col).toLong
+    for (row <- 0 until rowSize) {
+      for (col <- 0 until colSize) {
+        val vertexId = (row * colSize + col).toLong
         val cellInfo = vertices.find(_._1 == vertexId).map(_._2).getOrElse(new Cell(false, Set(), 0, 0, 0))
         print(s"${cellInfo.display} ")
       }
       println()
     }
   }
-  def constructGridGraph(n: Int, spark: SparkSession): Graph[Cell, Direction.Value] = {
+
+  def constructGridGraph(rowSize: Int, colSize: Int, spark: SparkSession): Graph[Cell, Direction.Value] = {
     import spark.implicits._
 
     // 1. Create RDD of Cells (Vertices)
-    val verticesRDD: RDD[(VertexId, Cell)] = spark.sparkContext.parallelize(0 until n).flatMap { rowInd =>
-        (0 until n).map { colInd =>
-            val vertexId: VertexId = rowInd.toLong * n + colInd // Unique vertex ID based on row and col
+    val verticesRDD: RDD[(VertexId, Cell)] = spark.sparkContext.parallelize(0 until rowSize).flatMap { rowInd =>
+        (0 until colSize).map { colInd =>
+            val vertexId: VertexId = rowInd.toLong * colSize + colInd // Unique vertex ID based on row and col
             (vertexId, Cell(false, Set.empty[Ant], rowInd, colInd, 0)) // Initial cells are white and empty
         }
     }
@@ -260,9 +214,9 @@ object SimulatorApp {
         )
 
         neighborIndices.flatMap { case (neighborRow, neighborCol, direction) =>
-            if (neighborRow >= 0 && neighborRow < n && neighborCol >= 0 && neighborCol < n) {
+            if (neighborRow >= 0 && neighborRow < rowSize && neighborCol >= 0 && neighborCol < colSize) {
                 val srcVertexId = vertexId
-                val dstVertexId: VertexId = neighborRow.toLong * n + neighborCol
+                val dstVertexId: VertexId = neighborRow.toLong * colSize + neighborCol
                 Some(Edge(srcVertexId, dstVertexId, direction))
             } else {
                 None // Filter out of bounds edges
@@ -272,5 +226,5 @@ object SimulatorApp {
 
     // 3. Construct the Graph
     Graph(verticesRDD, edgesRDD)
-    }
+  }
 }
