@@ -27,7 +27,7 @@ object SimulatorApp {
   // Simulator Context
   object SimCont {
     val props = new Properties()
-    //props.put("bootstrap.servers", "ants-kafka.default.svc.cluster.local:9092")
+    props.put("bootstrap.servers", "ants-kafka.default.svc.cluster.local:9092")
     //props.put("bootstrap.servers", "localhost:9092")
     props.put("bootstrap.servers", "192.168.49.2:30092")
     props.put("acks", "all")
