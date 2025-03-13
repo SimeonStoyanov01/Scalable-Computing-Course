@@ -170,7 +170,7 @@ object SimulatorApp {
     // println("pregellssss")
     println(s"ROBIN: starting pregel")
     val finalGraph = Pregel(graph, new CellUpdate(None, None, None), 30)(
-      handleIncomingAnts, msgAnts, mergeCellUpdates)   
+      handleIncomingAnts, msgAnts, mergeCellUpdates)
     println(s"ROBIN: done pregelling")
       
     printPrettyGrid(finalGraph, gridRowSize, gridColSize)
