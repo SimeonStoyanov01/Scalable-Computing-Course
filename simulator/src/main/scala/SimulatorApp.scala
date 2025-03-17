@@ -29,7 +29,7 @@ object SimulatorApp {
     val props = new Properties()
     props.put("bootstrap.servers", "kafka.default.svc.cluster.local:9092")
     //props.put("bootstrap.servers", "localhost:9092")
-    props.put("bootstrap.servers", "192.168.49.2:30092")
+    //props.put("bootstrap.servers", "192.168.49.2:30092")
     props.put("acks", "all")
     // props.put("retries", 0)
     // props.put("batch.size", 16384)
