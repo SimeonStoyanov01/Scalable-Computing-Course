@@ -39,36 +39,11 @@ async def kafka_listener():
     )
     await consumer.start()
     try:
-        # while True:
-        #     await asyncio.sleep(1)
-        #     messages = await consumer.getmany(timeout_ms=0)
-
-        #     if messages:
-        #         cells = []
-        #         max_time = 0
-        #         for tp, msgs in messages.items():
-        #             for msg in msgs:
-        #                 data_str = msg.value.decode("utf-8")
-        #                 try:
-        #                     data = json.loads(data_str)
-        #                     max_time = max(max_time, data["time"])
-        #                     del data["time"]
-        #                     cells.append(data)
-        #                 except json.JSONDecodeError as e:
-        #                     print(f"Error decoding JSON: {e}")
-        #                     continue #skip bad json.
-        #         if cells:
-        #             aggregated_data = {"time": max_time, "cells": cells}
-        #             aggregated_json = json.dumps(aggregated_data)
-        #             print("Aggregated simulation updates:", aggregated_json)
-        #             for ws in clients:
-        #                 await ws.send_text(aggregated_json)
-
+        cells = []
+        time = -1
         async for msg in consumer:
             data_str = msg.value.decode('utf-8')
             print("Got simulation update from Kafka:", data_str)
-            cells = []
-            time = -1
             try:
                 data = json.loads(data_str)
                 if not ( time == -1 or data["time"] == time ):
@@ -77,16 +52,13 @@ async def kafka_listener():
                     print("Aggregated simulation updates:", aggregated_json)
                     for ws in clients:
                         await ws.send_text(aggregated_json)
-                    time = data["time"]
-                    cells = []
+                    cells.clear()
+                time = data["time"]
                 del data["time"]
                 cells.append(data)
             except json.JSONDecodeError as e:
                 print(f"Error decoding JSON: {e}")
                 continue #skip bad json.
-            # We are inside an async function, so we can do:
-            for ws in clients:
-                await ws.send_text(data_str)
     finally:
         await consumer.stop()
 

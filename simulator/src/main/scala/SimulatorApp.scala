@@ -171,7 +171,7 @@ object SimulatorApp {
 
     // println("pregellssss")
     println(s"ROBIN: starting pregel")
-    val finalGraph = Pregel(graph, new CellUpdate(None, None, None), 30)(
+    val finalGraph = Pregel(graph, new CellUpdate(None, None, None), 10000)(
       handleIncomingAnts, msgAnts, mergeCellUpdates)
     println(s"ROBIN: done pregelling")
       
