@@ -50,8 +50,8 @@ async def kafka_listener():
                         data_str = msg.value.decode("utf-8")
                         try:
                             data = json.loads(data_str)
-                            cells.append(data)
                             max_time = max(max_time, data["time"])
+                            cells.append(data)
                         except json.JSONDecodeError as e:
                             print(f"Error decoding JSON: {e}")
                             continue #skip bad json.
@@ -80,7 +80,7 @@ async def get():
 async def initialize_grid(websocket: WebSocket, data: dict):
     print("Initializing grid")
     # print(data)
-    producer.send("initialize_grid", value=data)
+    producer.send("jobs", value=data)
     producer.flush()
     return {"message": "Grid initialized"}
 

@@ -22,6 +22,7 @@ object SimulatorApp {
   object MyUtils {
     @transient val objectMapper = new ObjectMapper() // Transient!
     objectMapper.registerModule(DefaultScalaModule)
+    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
   }
 
   // Simulator Context
@@ -94,7 +95,7 @@ object SimulatorApp {
     var graph = emptygraph.mapVertices((vertexId, cell) => {
       cell.copy(
         ants = if(
-          vertexId == 5050
+          vertexId == (gridColSize * 0.5 * gridRowSize + 0.5 * gridRowSize).toInt
           // || vertexId == 170
         ) {
           Set(Ant(Direction.South))
@@ -175,7 +176,7 @@ object SimulatorApp {
       
     printPrettyGrid(finalGraph, gridRowSize, gridColSize)
 
-    spark.stop()
+    //spark.stop()
   }
 
   def printPrettyGrid(graph: Graph[Cell, Direction.Value], rowSize: Int, colSize: Int): Unit = {
