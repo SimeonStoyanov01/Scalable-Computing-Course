@@ -39,12 +39,36 @@ async def kafka_listener():
     )
     await consumer.start()
     try:
-        async for msg in consumer:
-            data_str = msg.value.decode('utf-8')
-            print("Got simulation update from Kafka:", data_str)
-            # We are inside an async function, so we can do:
-            for ws in clients:
-                await ws.send_text(data_str)
+        while True:
+            messages = await consumer.getmany(timeout_ms=1000)  # Poll for 1 second
+
+            if messages:
+                cells = []
+                max_time = 0
+                for tp, msgs in messages.items():
+                    for msg in msgs:
+                        data_str = msg.value.decode("utf-8")
+                        try:
+                            data = json.loads(data_str)
+                            cells.append(data)
+                            max_time = max(max_time, data["time"])
+                        except json.JSONDecodeError as e:
+                            print(f"Error decoding JSON: {e}")
+                            continue #skip bad json.
+                if cells:
+                    aggregated_data = {"time": max_time, "cells": cells}
+                    aggregated_json = json.dumps(aggregated_data)
+                    print("Aggregated simulation updates:", aggregated_json)
+                    for ws in clients:
+                        await ws.send_text(aggregated_json)
+
+            await asyncio.sleep(0)
+        # async for msg in consumer:
+        #     data_str = msg.value.decode('utf-8')
+        #     print("Got simulation update from Kafka:", data_str)
+        #     # We are inside an async function, so we can do:
+        #     for ws in clients:
+        #         await ws.send_text(data_str)
     finally:
         await consumer.stop()
 
