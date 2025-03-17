@@ -41,7 +41,7 @@ async def kafka_listener():
     try:
         while True:
             await asyncio.sleep(1)
-            messages = consumer.getmany(timeout_ms=0)
+            messages = await consumer.getmany(timeout_ms=0)
 
             if messages:
                 cells = []
