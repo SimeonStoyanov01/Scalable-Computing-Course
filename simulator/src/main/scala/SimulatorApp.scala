@@ -7,6 +7,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx.util.GraphGenerators
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import java.io.StringWriter
 import org.apache.kafka.clients.producer.{Producer, Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.kafka.clients.consumer.{Consumer, KafkaConsumer, ConsumerRecords, ConsumerRecord}

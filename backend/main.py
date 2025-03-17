@@ -51,6 +51,7 @@ async def kafka_listener():
                         try:
                             data = json.loads(data_str)
                             max_time = max(max_time, data["time"])
+                            del data["time"]
                             cells.append(data)
                         except json.JSONDecodeError as e:
                             print(f"Error decoding JSON: {e}")
