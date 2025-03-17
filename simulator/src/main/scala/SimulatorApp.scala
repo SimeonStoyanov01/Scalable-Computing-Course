@@ -35,13 +35,15 @@ object SimulatorApp {
     val sc: SparkContext = spark.sparkContext
     import spark.implicits._
 
-    // val emptyCell = new Cell(false, Set())
+    // val gridSize = 20
+    val numRows = if (args.length > 0) args(0).toInt else 20
+    val numCols = if (args.length > 1) args(1).toInt else 20
+    val ants = if (args.length > 2) args(2).toInt else 1
 
-    val gridSize = 20
-    // val edges = createGrid(sc, gridSize)
 
     // val emptygraph: Graph[Cell, Direction.Value] = Graph.fromEdges(edges, emptyCell)
-    val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridSize, spark)
+    val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(numRows, numCols, spark)
+
 
     var graph = emptygraph.mapVertices((vertexId, oldCell) => {
       val rowInd = (vertexId / gridSize).toInt 
@@ -100,6 +102,14 @@ object SimulatorApp {
     }
     printPrettyGrid(graph, gridSize)
 
+    // Periodic checkpoint to truncate lineage:
+    if (i % 10 == 0) {
+      graph.checkpoint()
+    }
+    // Force an action so Spark actually executes the above transformations
+    graph.vertices.count() 
+
+
     graph.vertices.toDF
       // .withColumnRenamed("_2", "value")
       // .withColumn("value", col("_2").cast("string"))
@@ -157,12 +167,12 @@ object SimulatorApp {
       println()
     }
   }
-  def constructGridGraph(n: Int, spark: SparkSession): Graph[Cell, Direction.Value] = {
+  def constructGridGraph(n: Int, m: Int, spark: SparkSession): Graph[Cell, Direction.Value] = {
     import spark.implicits._
 
     // 1. Create RDD of Cells (Vertices)
     val verticesRDD: RDD[(VertexId, Cell)] = spark.sparkContext.parallelize(0 until n).flatMap { rowInd =>
-        (0 until n).map { colInd =>
+        (0 until m).map { colInd =>
             val vertexId: VertexId = rowInd.toLong * n + colInd // Unique vertex ID based on row and col
             (vertexId, Cell(false, Set.empty[Ant], rowInd, colInd)) // Initial cells are white and empty
         }

@@ -10,6 +10,14 @@ terraform {
             source = "poseidon/ct"
             version = "0.13.0"
         }
+
+        cloudinit = {
+            source  = "hashicorp/cloudinit"
+            version = "2.2.0"
+        }
+    }
+    backend "http" {
+
     }
 }
 

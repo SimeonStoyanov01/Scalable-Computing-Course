@@ -1,0 +1,10 @@
+users:
+  - name: ubuntu
+    ssh_authorized_keys:
+      - "${sshkey}"
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo, users, admin, docker
+    shell: /bin/bash
+    lock_passwd: false
+    plain_text_passwd: ${password}
+    chpasswd: { expire: False }

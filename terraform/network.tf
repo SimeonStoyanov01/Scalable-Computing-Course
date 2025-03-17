@@ -62,7 +62,20 @@ resource "openstack_networking_router_interface_v2" "internal" {
 }
 
 # Create a port resource, linking VM and internal network
-resource "openstack_networking_port_v2" "flatcar" {
+resource "openstack_networking_port_v2" "master" {
+    network_id = openstack_networking_network_v2.internal.id
+    admin_state_up = "true"
+    security_group_ids = [
+        openstack_networking_secgroup_v2.basic.id
+    ]
+
+    depends_on = [
+        openstack_networking_subnet_v2.internal
+    ]
+}
+
+resource "openstack_networking_port_v2" "worker" {
+    count = 2
     network_id = openstack_networking_network_v2.internal.id
     admin_state_up = "true"
     security_group_ids = [
@@ -79,9 +92,9 @@ resource "openstack_networking_floatingip_v2" "float_ip" {
     pool = var.public_network
 }
 
-resource "openstack_networking_floatingip_associate_v2" "flatcar" {
+resource "openstack_networking_floatingip_associate_v2" "master" {
     floating_ip = openstack_networking_floatingip_v2.float_ip.address
-    port_id = openstack_networking_port_v2.flatcar.id
+    port_id = openstack_networking_port_v2.master.id
 
     # We explicitly let the floating IP association depend on the existence
     # of the router between internal and external networks; otherwise we can't

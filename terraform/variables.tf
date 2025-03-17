@@ -46,12 +46,29 @@ variable "image_name" {
     description = "Image name to be used"
 }
 
-variable "flavor_name" {
-    type = string
-    description = "Flavor to use for the instance"
-}
-
 variable "public_network" {
     type = string
     description = "Name of the public network to connect to"
+}
+
+variable "K3S_TOKEN" {
+    type = string
+    description = "K3S authentication token"
+    sensitive = true
+}
+
+variable "ubuntu_password" {
+    type = string
+    description = "Password for the Ubuntu user"
+    sensitive = true
+}
+
+variable "flavor_name_master" {
+    type = string
+    description = "Flavor to use for the master instance"
+}
+
+variable "flavor_name_worker" {
+    type = string
+    description = "Flavor to use for the worker instances"
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import ant from './ant.jpg'
 import './App.css';
 import ControlPanel from './components/controlPanel'
@@ -11,7 +11,9 @@ function App() {
   const [ants, setAntNumber] = useState(5);
   const [saveSimulation, setSaveSimulation] = useState(false);
   const [simulationRunning, setSimulationStatus] = useState(false);
-  const {connected, initialize_grid} = useWebSocketClient("ws://localhost:8000/ws")
+  const {connected, initialize_grid, onMessage} = useWebSocketClient("ws://localhost:8000/ws")
+  const [updates, setUpdates] = useState(null);
+  const [timestep, setTimestep] = useState(0);
 
   useEffect(() => {
     console.log('Grid Rows: ', gridRows)
@@ -34,9 +36,20 @@ function App() {
   }, [simulationRunning])
 
   useEffect(() => {
+    console.log('Timestep: ', timestep)
+  }, [timestep])
+
+  useEffect(() => {
     document.documentElement.style.setProperty("--rows", gridRows);
     document.documentElement.style.setProperty("--cols", gridCols);
-  }, [gridRows, gridCols]);
+  }, [gridRows, gridCols])
+  
+  useEffect(() => {
+    onMessage((data) => {
+      setUpdates(data);
+      setTimestep(data.time);
+    });
+  }, [onMessage]);
 
   return (
     <div className="App">
@@ -51,7 +64,7 @@ function App() {
         <div className="left-panel">
           <Grid gridRows={gridRows}
             gridCols={gridCols} 
-            ants={ants} />
+            updates={updates} />
         </div>
 
         <div className="right-panel">
@@ -66,6 +79,8 @@ function App() {
             setSaveSimulation={setSaveSimulation}
             setSimulationStatus={setSimulationStatus} 
             initialize_grid={initialize_grid}/>
+
+          <p>Simulation timestep: {timestep}</p>
         </div>
       </div>
 
