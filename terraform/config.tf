@@ -9,15 +9,16 @@ data "cloudinit_config" "master" {
 
   part {
     content_type = "text/cloud-config"
-    content = templatefile("${path.module}/configs/cloud-init_master.yaml", {
-      K3S_TOKEN = var.K3S_TOKEN
-    })
-  }
-   part {
-    content_type = "text/cloud-config"
     content = templatefile("${path.module}/configs/snippets/users.yaml", {
       sshkey   = file("${path.module}/id_rsa.pub"),
       password = var.ubuntu_password
+    })
+  }
+  
+  part {
+    content_type = "text/cloud-config"
+    content = templatefile("${path.module}/configs/cloud-init_master.yaml", {
+      K3S_TOKEN = var.K3S_TOKEN
     })
   }
 

@@ -4,6 +4,12 @@ const useWebSocketClient = (url) => {
     // const [ws, setWs] = useState(null);
     const [connected, setConnected] = useState(false);
     const socketRef = useRef(null);
+
+    const callbackRef = useRef(null);
+
+    const onMessage = (callback) => {
+        callbackRef.current = callback;
+    };
     
     useEffect(() => {
         const ws = new WebSocket(url);
@@ -15,7 +21,9 @@ const useWebSocketClient = (url) => {
         };
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            console.log("Received from server:", data);
+            if (callbackRef.current) {
+                callbackRef.current(data);
+            }
         };
         ws.onclose = () => {
             console.log("Disconnected from the WebSocket server");
@@ -40,7 +48,7 @@ const useWebSocketClient = (url) => {
           }
     };
     
-    return ({ connected, initialize_grid});
+    return ({ connected, initialize_grid, onMessage });
 }
 
 export default useWebSocketClient;
