@@ -96,7 +96,7 @@ object SimulatorApp {
     var graph = emptygraph.mapVertices((vertexId, cell) => {
       cell.copy(
         ants = if(
-          vertexId == (gridColSize * 0.5 * gridRowSize + 0.5 * gridRowSize).toInt
+          cell.rowInd == gridRowSize / 2 &&  cell.colInd == gridColSize / 2
           // || vertexId == 170
         ) {
           Set(Ant(Direction.South))
