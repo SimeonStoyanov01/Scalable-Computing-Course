@@ -40,7 +40,8 @@ async def kafka_listener():
     await consumer.start()
     try:
         while True:
-            messages = await consumer.getmany(timeout_ms=1000)  # Poll for 1 second
+            await asyncio.sleep(1)
+            messages = consumer.poll(timeout_ms=0)
 
             if messages:
                 cells = []
@@ -63,7 +64,6 @@ async def kafka_listener():
                     for ws in clients:
                         await ws.send_text(aggregated_json)
 
-            await asyncio.sleep(0)
         # async for msg in consumer:
         #     data_str = msg.value.decode('utf-8')
         #     print("Got simulation update from Kafka:", data_str)
