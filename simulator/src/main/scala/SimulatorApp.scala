@@ -114,7 +114,7 @@ object SimulatorApp {
       MyUtils.objectMapper.writeValue(out, newCell)
       val json = out.toString()
       println(s"ROBIN: SENDING $json")
-      SimCont.producer.send(new ProducerRecord[String, String]("new-ants2", "lmaoheaderamirite", json));
+      SimCont.producer.send(new ProducerRecord[String, String]("langton_ant_updates", "lmaoheaderamirite", json));
       newCell
     }
 

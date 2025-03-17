@@ -34,7 +34,7 @@ async def startup_event():
 async def kafka_listener():
     consumer = AIOKafkaConsumer(
         "langton_ant_updates",
-        bootstrap_servers="kafka:9092",
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
         auto_offset_reset="earliest"
     )
     await consumer.start()
