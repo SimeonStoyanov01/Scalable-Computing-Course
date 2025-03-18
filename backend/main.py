@@ -1,8 +1,8 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 import json
-# from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-# from kafka import KafkaProducer
+from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
+#from kafka import KafkaProducer
 import os
 import asyncio
 import logging
@@ -26,10 +26,10 @@ app = FastAPI()
 
 clients = []
 
-# @app.on_event("startup")
-# async def startup_event():
-#     # Start an async task that runs the AIOKafkaConsumer
-#     asyncio.create_task(kafka_listener())
+@app.on_event("startup")
+async def startup_event():
+    # Start an async task that runs the AIOKafkaConsumer
+    asyncio.create_task(kafka_listener())
 
 async def kafka_listener():
     consumer = AIOKafkaConsumer(

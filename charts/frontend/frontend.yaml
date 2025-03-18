@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: frontend 
+  template:
+    metadata:
+      labels:
+        app: 
+    spec:
+      containers:
+      - name: frontend
+        image: makenjoy/frontend:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: "KAFKA_BOOTSTRAP_SERVERS"
+          value: "kafka.default.svc.cluster.local:9092"
+        imagePullPolicy: Always
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:80"

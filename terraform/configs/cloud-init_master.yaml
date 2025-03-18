@@ -53,9 +53,25 @@ runcmd:
     helm repo add bitnami https://charts.bitnami.com/bitnami
   
     helm upgrade --install mongo bitnami/mongodb
-    helm upgrade --install kafka bitnami/kafka
-    helm upgrade --install zookeeper bitnami/zookeeper
-    helm upgrade --install kafdrop bitnami/kafdrop
+
+    export chartsdir=/home/ubuntu/charts
+    while [[ ! -d "$chartsdir" ]]; do
+      echo "Waiting for directory: $chartsdir"
+      sleep 1  # Wait for 1 second before checking again
+    done
+
+    chmod +x $chartsdir/simulator/install-min-io.sh
+    $chartsdir/simulator/install-min-io.sh
+
+    chmod +x $chartsdir/simulator/create-service-account.sh
+    $chartsdir/simulator/create-service-account.sh
+
+    chmod +x $chartsdir/kafka/start-kafka.sh
+    $chartsdir/kafka/start-kafka.sh
+
+    kubectl apply -f $chartsdir/backend/backend.yaml
+    kubectl apply -f $chartsdir/frontend/frontend.yaml
+    kubectl apply -f $chartsdir/simulator/submit-spark-job.yaml
 
 
 # Logging
