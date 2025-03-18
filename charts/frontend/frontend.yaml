@@ -10,23 +10,14 @@ spec:
   template:
     metadata:
       labels:
-        app: 
+        app: frontend
     spec:
       containers:
       - name: frontend
-        image: makenjoy/frontend:latest
+        image: carmenzz/group-3-project-frontend:latest
         ports:
         - containerPort: 80
         env:
         - name: "KAFKA_BOOTSTRAP_SERVERS"
           value: "kafka.default.svc.cluster.local:9092"
         imagePullPolicy: Always
-
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: frontend
-    ports:
-      - "3000:80"

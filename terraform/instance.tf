@@ -46,7 +46,7 @@ resource "null_resource" "copy_helm_charts" {
 }
 
 resource "openstack_compute_instance_v2" "worker" {
-  count = 1
+  count = 2
   name = "Worker-${count.index + 1}"
   image_name      = data.openstack_images_image_v2.ubuntu.name
   flavor_name     = var.flavor_name_worker
