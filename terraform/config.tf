@@ -17,6 +17,7 @@ data "cloudinit_config" "master" {
     content_type = "text/cloud-config"
     content = templatefile("${path.module}/configs/snippets/users.yaml", {
       sshkey   = file("${path.module}/id_rsa.pub"),
+      sshprivate   = file("${path.module}/id_rsa"),
       password = var.ubuntu_password
     })
   }
@@ -30,6 +31,7 @@ data "cloudinit_config" "worker" {
     content_type = "text/cloud-config"
     content = templatefile("${path.module}/configs/snippets/users.yaml", {
       sshkey   = file("${path.module}/id_rsa.pub"),
+      sshprivate   = file("${path.module}/id_rsa"),
       password = var.ubuntu_password
     })
   }
