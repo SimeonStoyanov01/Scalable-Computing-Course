@@ -3,14 +3,15 @@ packages:
   - curl
   - software-properties-common
 runcmd:
-  - apt-get update
-  - apt-get install -y curl
+  - |
+    apt-get update
+    apt-get install -y curl
 
-  - export K3S_TOKEN="${K3S_TOKEN}" 
-  - export K3S_URL="${K3S_URL}"  
-  - curl -sfL https://get.k3s.io | sh -s - --token "${K3S_TOKEN}" --server "${K3S_URL}"
-  - curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
-  - helm repo add cpo https://kubernetes.github.io/cloud-provider-openstack
+    export K3S_TOKEN="${K3S_TOKEN}" 
+    export K3S_URL="${K3S_URL}"  
+    curl -sfL https://get.k3s.io | sh -s - --token "${K3S_TOKEN}" --server "${K3S_URL}"
+    curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+    helm repo add cpo https://kubernetes.github.io/cloud-provider-openstack
 
 # Logging
 output: { all: '| tee -a /home/ubuntu/cloud-init-output.log' }

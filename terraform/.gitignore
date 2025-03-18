@@ -4,3 +4,7 @@
 id_rsa*
 *.img
 *openrc*
+
+cc
+cc.pub
+terraform_init.sh

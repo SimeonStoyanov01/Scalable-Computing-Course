@@ -1,5 +1,7 @@
 {
     "image_name": "<container-name>:<tag>",
+    "backend_image": "carmenzz/group-3-project-backend:latest",
+    "frontend_image": "carmenzz/group-3-project-frontend:latest",
     "public_network": "external_unfiltered",
     "flavor_name_master": "",
     "flavor_name_worker": ""
