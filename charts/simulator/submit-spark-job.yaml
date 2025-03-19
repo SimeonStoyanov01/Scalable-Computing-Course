@@ -13,7 +13,7 @@ spec:
           "/opt/spark/bin/spark-submit",
           "--name", "ants-simulator",
           "--verbose", 
-          "--master", "k8s://https://10.10.2.95:6443",
+          "--master", "k8s://https://10.10.0.149:6443",
           #"--conf", "spark.kubernetes.driverEnv.SPARK_MASTER_URL=spark://rob-spark-master-svc:7077",
           "--conf", "spark.kubernetes.container.image.pullPolicy=Always",
           "--conf", "spark.kubernetes.container.image=makenjoy/ants-simulator:test2",
