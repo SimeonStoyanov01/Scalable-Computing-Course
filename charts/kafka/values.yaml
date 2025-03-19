@@ -11,6 +11,10 @@ listeners:
 #controller:
 #  replicaCount: 1
 
+extraConfig: |
+  auto.create.topics.enable: true
+
+
 externalAccess:
   enabled: true
   controller:
