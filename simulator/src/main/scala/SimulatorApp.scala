@@ -18,6 +18,8 @@ import scala.collection.JavaConverters._
 import scala.util.{Try, Success, Failure}
 import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction, CellUpdate}
 import com.rug.jobs.JobRequest
+import java.time.Instant
+import java.time.Duration
 
 object SimulatorApp {
   object MyUtils {
@@ -81,7 +83,7 @@ object SimulatorApp {
     val spark = SparkSession.builder
       .appName("Simulator")
       // .config("spark.checkpoint.dir", checkpointDir) // Seems to not work
-      .config("spark.graphx.pregel.checkpointInterval", 20)
+      .config("spark.graphx.pregel.checkpointInterval", 100)
       .getOrCreate()
 
     val sc: SparkContext = spark.sparkContext
@@ -170,12 +172,20 @@ object SimulatorApp {
 
 
     // println("pregellssss")
+    val startTime = Instant.now()
+
     println(s"ROBIN: starting pregel")
-    val finalGraph = Pregel(graph, new CellUpdate(None, None, None), 10000)(
+    val finalGraph = graph.pregel(new CellUpdate(None, None, None), 10000, EdgeDirection.Out)(
       handleIncomingAnts, msgAnts, mergeCellUpdates)
     println(s"ROBIN: done pregelling")
       
     printPrettyGrid(finalGraph, gridRowSize, gridColSize)
+
+    val endTime = Instant.now()
+
+    val duration = Duration.between(startTime, endTime)
+
+    println(s"Simulation time: ${duration.toSeconds} seconds")
 
     //spark.stop()
   }
