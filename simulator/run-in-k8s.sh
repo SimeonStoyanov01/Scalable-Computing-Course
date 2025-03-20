@@ -6,7 +6,10 @@ docker build -t makenjoy/ants-simulator:test2 .
 docker push makenjoy/ants-simulator:test2
 
 DRIVER_POD_NAME=$(kubectl get pods -o name | grep "ants-simulator-.*-driver" | cut -d'/' -f2)
-job_json='{"gridRows": 10,"gridCols": 10}'
+gridRows=10
+gridCols=10
+numAnts=1
+job_json="{\"gridRows\": $gridRows,\"gridCols\": $gridCols, \"ants\": $numAnts}"
 
 echo "Driver pod = $DRIVER_POD_NAME"
 
@@ -14,11 +17,11 @@ kubectl delete pod $DRIVER_POD_NAME || true
 kubectl delete job ants-simulator || true
 kubectl apply -f ../charts/simulator/submit-spark-job.yaml
 
-for i in $(seq 1 5); do
-    kubectl exec -i kafka-client --namespace default -- kafka-console-producer.sh \
-            --bootstrap-server kafka.default.svc.cluster.local:9092 \
-            --topic jobs <<< $job_json
-done
+# for i in $(seq 1 3); do
+#     kubectl exec -i kafka-client --namespace default -- kafka-console-producer.sh \
+#             --bootstrap-server kafka.default.svc.cluster.local:9092 \
+#             --topic jobs <<< $job_json
+# done
 
 echo "Waiting for driver pod"
 DRIVER_POD_NAME=""
@@ -42,4 +45,5 @@ done
 
 echo "Driver pod name: $DRIVER_POD_NAME"
 rm simulation_times.txt
-kubectl logs -f $DRIVER_POD_NAME | tee >(grep -B 10 'Simulation time:') >(stdbuf -oL grep 'Simulation time:' > simulation_times.txt) >(grep 'ROBIN') >(grep 'Received job=') >(grep 'error') > /dev/null
+rm robin_logs.txt
+kubectl logs -f $DRIVER_POD_NAME | tee >(grep -B $gridRows 'Simulation time:') >(stdbuf -oL grep 'Simulation time:' > simulation_times.txt) >(grep 'ROBIN') >(stdbuf -oL grep 'ROBIN' > robin_logs.txt) >(grep 'Received job=') >(grep 'error') > /dev/null

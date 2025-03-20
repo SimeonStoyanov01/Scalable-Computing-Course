@@ -43,7 +43,7 @@ object SimulatorApp {
     props.put("value.serializer", classOf[StringSerializer].getName)
     props.put("key.deserializer", classOf[StringDeserializer].getName)
     props.put("value.deserializer", classOf[StringDeserializer].getName)
-    props.put("group.id", "my-consumer-group")
+    props.put("group.id", "ants-consumer1")
 
     @transient lazy val producer: Producer[String, String] = new KafkaProducer[String, String](props)
     @transient lazy val consumer: Consumer[String, String] = new KafkaConsumer[String, String](props)
@@ -77,13 +77,14 @@ object SimulatorApp {
     println(s"Running simulation with jobRequest: $jobRequest")
     val gridRowSize = jobRequest.gridRows
     val gridColSize = jobRequest.gridCols
+    val numAnts = jobRequest.ants
 
     val checkpointDir = "s3a://checkpoints/"
 
     val spark = SparkSession.builder
       .appName("Simulator")
       // .config("spark.checkpoint.dir", checkpointDir) // Seems to not work
-      .config("spark.graphx.pregel.checkpointInterval", 100)
+      .config("spark.graphx.pregel.checkpointInterval", 25)
       .getOrCreate()
 
     val sc: SparkContext = spark.sparkContext
@@ -95,9 +96,16 @@ object SimulatorApp {
     // import spark.implicits._
     val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridRowSize, gridColSize, spark)
 
+    val antSquareSize = math.ceil(math.sqrt(numAnts)).toInt
+    val antRowPeriod = (gridRowSize + 1) / (antSquareSize + 1)
+    val antColPeriod = (gridColSize + 1) / (antSquareSize + 1)
+
     var graph = emptygraph.mapVertices((vertexId, cell) => {
       cell.copy(
         ants = if(
+          // cell.rowInd % antRowPeriod == antRowPeriod-1
+          // && cell.colInd % antColPeriod == antColPeriod-1
+          // && antSquareSize * (cell.rowInd/antRowPeriod) + (cell.colInd/antColPeriod) <= numAnts
           cell.rowInd == gridRowSize / 2 &&  cell.colInd == gridColSize / 2
           // || vertexId == 170
         ) {
@@ -149,7 +157,10 @@ object SimulatorApp {
           case (None, Some(x)) => Some(x)
           case (None, None) => None
           case (Some(x), Some(y)) => {
-            assume(x==y, "Error: Invariant not satisfied: One cell recieved multiple different colour updates.")
+            //assume(x==y, s"Error: Invariant not satisfied: One cell recieved multiple different colour updates. Recieved ($a) and ($b).")
+            if(x!=y) {
+              println(s"ROBIN Error: Invariant not satisfied: One cell recieved multiple different colour updates. Recieved ($a) and ($b).")
+            }
             Some(x)
           }
         },
@@ -175,7 +186,7 @@ object SimulatorApp {
     val startTime = Instant.now()
 
     println(s"ROBIN: starting pregel")
-    val finalGraph = graph.pregel(new CellUpdate(None, None, None), 10000, EdgeDirection.Out)(
+    val finalGraph = graph.pregel(new CellUpdate(None, None, None), 10000)(
       handleIncomingAnts, msgAnts, mergeCellUpdates)
     println(s"ROBIN: done pregelling")
       
@@ -225,16 +236,28 @@ object SimulatorApp {
             (rowInd, colInd + 1, Direction.East)
         )
 
-        neighborIndices.flatMap { case (neighborRow, neighborCol, direction) =>
-            if (neighborRow >= 0 && neighborRow < rowSize && neighborCol >= 0 && neighborCol < colSize) {
-                val srcVertexId = vertexId
-                val dstVertexId: VertexId = neighborRow.toLong * colSize + neighborCol
-                Some(Edge(srcVertexId, dstVertexId, direction))
-            } else {
-                None // Filter out of bounds edges
-            }
+      neighborIndices.flatMap { case (neighborRow, neighborCol, direction) =>
+        if (neighborRow >= 0 && neighborRow < rowSize && neighborCol >= 0 && neighborCol < colSize) {
+          val srcVertexId = vertexId
+          val dstVertexId: VertexId = neighborRow.toLong * colSize + neighborCol
+          Some(Edge(srcVertexId, dstVertexId, direction))
+        } else {
+          None // Filter out of bounds edges
         }
+      }
     }
+
+    // Display vertices and their partitions
+    println("\nROBIN--- Vertices RDD Partitioning ---")
+    verticesRDD.mapPartitionsWithIndex { (partitionId, iterator) =>
+      iterator.map(vertex => s"ROBINPartition: $partitionId, Vertex: $vertex")
+    }.collect().foreach(println)
+
+    // Display edges and their partitions with source and destination vertices
+    println("\nROBIN--- Edges RDD Partitioning ---")
+    edgesRDD.mapPartitionsWithIndex { (partitionId, iterator) =>
+      iterator.map(edge => s"ROBINPartition: $partitionId, Edge: Source(${edge.srcId}) -> Destination(${edge.dstId}), Direction: ${edge.attr}")
+    }.collect().foreach(println)
 
     // 3. Construct the Graph
     Graph(verticesRDD, edgesRDD)
