@@ -44,6 +44,6 @@ while true; do
 done
 
 echo "Driver pod name: $DRIVER_POD_NAME"
-rm simulation_times.txt
-rm robin_logs.txt
+rm simulation_times.txt || true
+rm robin_logs.txt || true
 kubectl logs -f $DRIVER_POD_NAME | tee >(grep -B $gridRows 'Simulation time:') >(stdbuf -oL grep 'Simulation time:' > simulation_times.txt) >(grep 'ROBIN') >(stdbuf -oL grep 'ROBIN' > robin_logs.txt) >(grep 'Received job=') >(grep 'error') > /dev/null

@@ -143,7 +143,7 @@ object SimulatorApp {
       val dirAnts = antRule(triplet.srcAttr, triplet.attr)
       if (!dirAnts.isEmpty) {
         val dstUpdate = new CellUpdate(None, Some(dirAnts), Some(triplet.srcAttr.time))
-        val srcUpdate = new CellUpdate(Some(!triplet.dstAttr.colour), Some(Set()), Some(triplet.srcAttr.time))
+        val srcUpdate = new CellUpdate(Some(!triplet.srcAttr.colour), Some(Set()), Some(triplet.srcAttr.time))
         Iterator((triplet.dstId, dstUpdate), (triplet.srcId, srcUpdate))
       } else {
         Iterator()
@@ -236,15 +236,15 @@ object SimulatorApp {
             (rowInd, colInd + 1, Direction.East)
         )
 
-      neighborIndices.flatMap { case (neighborRow, neighborCol, direction) =>
-        if (neighborRow >= 0 && neighborRow < rowSize && neighborCol >= 0 && neighborCol < colSize) {
-          val srcVertexId = vertexId
-          val dstVertexId: VertexId = neighborRow.toLong * colSize + neighborCol
-          Some(Edge(srcVertexId, dstVertexId, direction))
-        } else {
-          None // Filter out of bounds edges
+        neighborIndices.flatMap { case (neighborRow, neighborCol, direction) =>
+            if (neighborRow >= 0 && neighborRow < rowSize && neighborCol >= 0 && neighborCol < colSize) {
+                val srcVertexId = vertexId
+                val dstVertexId: VertexId = neighborRow.toLong * colSize + neighborCol
+                Some(Edge(srcVertexId, dstVertexId, direction))
+            } else {
+                None // Filter out of bounds edges
+            }
         }
-      }
     }
 
     // Display vertices and their partitions
