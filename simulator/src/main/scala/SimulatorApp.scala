@@ -97,16 +97,18 @@ object SimulatorApp {
     val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridRowSize, gridColSize, spark)
 
     val antSquareSize = math.ceil(math.sqrt(numAnts)).toInt
-    val antRowPeriod = (gridRowSize + 1) / (antSquareSize + 1)
-    val antColPeriod = (gridColSize + 1) / (antSquareSize + 1)
+    val antRowPeriod = Math.ceil((gridRowSize + 1).toDouble / (antSquareSize + 1)).toInt
+    val antColPeriod = Math.ceil((gridColSize + 1).toDouble / (antSquareSize + 1)).toInt
+    val antRowOffset = 0 
+    val antColOffset = 0 
 
     var graph = emptygraph.mapVertices((vertexId, cell) => {
       cell.copy(
         ants = if(
-          // cell.rowInd % antRowPeriod == antRowPeriod-1
-          // && cell.colInd % antColPeriod == antColPeriod-1
-          // && antSquareSize * (cell.rowInd/antRowPeriod) + (cell.colInd/antColPeriod) <= numAnts
-          cell.rowInd == gridRowSize / 2 &&  cell.colInd == gridColSize / 2
+          (cell.rowInd + antRowOffset) % antRowPeriod == antRowPeriod-1
+          && (cell.colInd + antColOffset) % antColPeriod == antColPeriod-1
+          && antSquareSize * ((cell.rowInd+antRowOffset)/antRowPeriod) + ((cell.colInd+1+antColOffset)/antColPeriod) <= numAnts
+          // cell.rowInd == gridRowSize / 2 &&  cell.colInd == gridColSize / 2
           // || vertexId == 170
         ) {
           Set(Ant(Direction.South))
