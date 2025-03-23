@@ -69,8 +69,8 @@ runcmd:
     chmod +x $chartsdir/kafka/start-kafka.sh
     $chartsdir/kafka/start-kafka.sh
 
-    kubectl apply -f $chartsdir/backend/backend.yaml
-    kubectl apply -f $chartsdir/frontend/frontend.yaml
+    helm upgrade --install backend $chartsdir/backend --values $chartsdir/backend/values.yaml
+    helm upgrade --install frontend $chartsdir/frontend --values $chartsdir/frontend/values.yaml
     kubectl apply -f $chartsdir/simulator/submit-spark-job.yaml
 
 
