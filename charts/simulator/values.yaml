@@ -10,7 +10,7 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-cmdParams:
-  - value: "10"
-  - value: "10"
-  - value: "1"
+# cmdParams:
+#   - value: "10"
+#   - value: "10"
+#   - value: "1"

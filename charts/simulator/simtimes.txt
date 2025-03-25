@@ -1,0 +1,2 @@
+running with checkpoint interval = 1 for i=0
+running with checkpoint interval = 1 for i=0

@@ -51,26 +51,37 @@ object SimulatorApp {
   }
 
   def main(args: Array[String]): Unit = {
-    println("Waiting for jobs")
-    while (true) {
-      val jobs = SimCont.consumer.poll(2000)
-      for (job <- jobs.asScala) {
-        println(s"Received job=$job")
-        Try {
-          MyUtils.objectMapper.readValue(job.value(), classOf[JobRequest])
-        } match {
-          case Success(jobRequest) =>
-            println(s"Parsed jobRequest=$jobRequest")
-            runSimulation(jobRequest)
-          case Failure(e) =>
-            println(s"Failed to parse job request: ${e.getMessage}")
-            println(s"Skipping and commiting message")
-        }
-      }
-      SimCont.consumer.commitSync()
-    }
+    // println("Waiting for jobs")
+    // while (true) {
+    //   val jobs = SimCont.consumer.poll(2000)
+    //   for (job <- jobs.asScala) {
+    //     println(s"Received job=$job")
+    //     Try {
+    //       MyUtils.objectMapper.readValue(job.value(), classOf[JobRequest])
+    //     } match {
+    //       case Success(jobRequest) =>
+    //         println(s"Parsed jobRequest=$jobRequest")
+    //         runSimulation(jobRequest)
+    //       case Failure(e) =>
+    //         println(s"Failed to parse job request: ${e.getMessage}")
+    //         println(s"Skipping and commiting message")
+    //     }
+    //   }
+    //   SimCont.consumer.commitSync()
+    // }
 
-    SimCont.producer.close()
+    // SimCont.producer.close()
+    if (args.length == 5) {
+      val gridRows = args(0).toInt
+      val gridCols = args(1).toInt
+      val ants = args(2).toInt
+      val numSteps = args(3).toInt
+      val checkpointInterval = args(4).toInt
+      runSimulation(new JobRequest(gridRows, gridCols, ants, Some(numSteps), Some(checkpointInterval)))
+    } else {
+      println("Usage: SimulatorApp <gridRows> <gridCols> <ants> <numSteps> <checkpointInterval>")
+      // runSimulation(new JobRequest(100, 100, 1000)) // Default values
+    }
   }
 
   def runSimulation(jobRequest: JobRequest) {
@@ -78,13 +89,15 @@ object SimulatorApp {
     val gridRowSize = jobRequest.gridRows
     val gridColSize = jobRequest.gridCols
     val numAnts = jobRequest.ants
+    val numSteps = jobRequest.numSteps.getOrElse(10000)
+    val checkpointInterval = jobRequest.checkpointInterval.getOrElse(25)
 
     val checkpointDir = "s3a://checkpoints/"
 
     val spark = SparkSession.builder
       .appName("Simulator")
       // .config("spark.checkpoint.dir", checkpointDir) // Seems to not work
-      .config("spark.graphx.pregel.checkpointInterval", 25)
+      .config("spark.graphx.pregel.checkpointInterval", checkpointInterval)
       .getOrCreate()
 
     val sc: SparkContext = spark.sparkContext
@@ -188,7 +201,7 @@ object SimulatorApp {
     val startTime = Instant.now()
 
     println(s"ROBIN: starting pregel")
-    val finalGraph = graph.pregel(new CellUpdate(None, None, None), 10000)(
+    val finalGraph = graph.pregel(new CellUpdate(None, None, None), numSteps)(
       handleIncomingAnts, msgAnts, mergeCellUpdates)
     println(s"ROBIN: done pregelling")
       
@@ -198,7 +211,7 @@ object SimulatorApp {
 
     val duration = Duration.between(startTime, endTime)
 
-    println(s"Simulation time: ${duration.toSeconds} seconds")
+    println(s"Simulation time: ${duration.toMillis} milliseconds")
 
     //spark.stop()
   }
@@ -232,10 +245,10 @@ object SimulatorApp {
         val rowInd = cell.rowInd
         val colInd = cell.colInd
         val neighborIndices = Seq(
-            (rowInd - 1, colInd, Direction.North),
-            (rowInd + 1, colInd, Direction.South),
-            (rowInd, colInd - 1, Direction.West),
-            (rowInd, colInd + 1, Direction.East)
+            ((rowSize + rowInd - 1) % rowSize, colInd, Direction.North),
+            ((rowInd + 1) % rowSize, colInd, Direction.South),
+            (rowInd, (colInd - 1 + colSize) % colSize, Direction.West),
+            (rowInd, (colInd + 1) % colSize, Direction.East)
         )
 
         neighborIndices.flatMap { case (neighborRow, neighborCol, direction) =>
