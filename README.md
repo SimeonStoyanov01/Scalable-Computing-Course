@@ -23,26 +23,31 @@ The core simulation logic we devoted to Apache Spark for its native MapReduce ca
 The React frontend communicates with the backend via WebSocket, enabling real-time grid updates. Users interact with an adjustable grid, modifying parameters like size and ant count, while a control panel allows starting, pausing, or saving simulations. Saved states are persisted for historical analysis, and a step counter provides live progress tracking. The resulting visualizations highlight emerging patterns as ants traverse the grid, demonstrating complex behavior using simple rules.
 
 
-## Usage?
+<!-- ## Usage? -->
 
 ## Data pipelines
 
-### Streamline data #Robin?
+### Streamline data 
+
+<!-- #Robin? -->
 
 <!-- Include pipeline figure if you can -->
 
-### Historical data #Carmen
+### Historical data 
+<!-- #Carmen -->
 
 <!-- Include pipeline figure if you can -->
 
 
 ## Infrastructure Setup
 
-### Simulation - Spark #Robin
+### Simulation - Spark 
+<!-- #Robin -->
 
 ### Kafka
 
-### Backend #Carmen
+### Backend 
+<!-- #Carmen -->
 
 The backend is a core structural component for the application, responsible for accumulating, aggregating and serving data to the frontend. For its implementation, we have chosen the FastAPI framework, which is a Python, modern, fast, high-performance web framework for building APIs. FastAPI is an ideal choice for this application as it is an asynchronous framework that can handle a vast number of requests concurrently. The backend makes use of a websocket for streaming data in real-time to the frontend.
 
@@ -52,14 +57,16 @@ The backend is responsible for several tasks, including:
 - Save historical data to the database if the user requests it.
 - Query the database for historical data and serve it to the frontend.
 
-### Frontend #Carmen
+### Frontend 
+<!-- #Carmen -->
 
 The frontend represents the first point of access for the user to interact with the application. It displays the state of the simulation in real-time, as well as offering a set of controls to manipulate the simulation. This component has been implemented using React, a JavaScript library for constructing responsive and dynamic user interfaces. This design choice comes naturally as React enables the utilisation of reusable components for fast rendering of real-time updates of the state of the simulation, as well as providing native intergration for websocket communication with the backend.
 
 We have designed the user interface with a focus on simplicity and intuitive interaction. The user may modify the parameters of the simulation, consisting of the grid size (rows and columns) and the number of ants. Furthermore, the user can save the current simulation by marking the `Save Simulation` checkbox. Naturally, the user can opt for visualizing a previous simulation by selecting an entry from the dropdown menu.
 
 
-### Database #Carmen
+### Database 
+<!-- #Carmen -->
 
 The application is connected to a MongoDB database, which is a NoSQL database that stores data in flexible, JSON format documents. This component is utilized for storing historical data, represented by previously computed simulations. 
 
@@ -95,7 +102,8 @@ Each time step is indexed by the field `simulation_id`, which is a unique auto-g
 
 <!-- Discuss ingress and overall cluster communication -->
 
-### Terraform deployment #Carmen
+### Terraform deployment
+ <!-- #Carmen -->
 
 <!-- Discuss deployment, terrform state -->
 
@@ -106,20 +114,24 @@ Each time step is indexed by the field `simulation_id`, which is a unique auto-g
 
 <!-- discuss horizontal/vertical scaling -->
 
-### Fault tolerance #Robin
+### Fault tolerance 
+<!-- #Robin -->
 
-### Data locality awareness #Robin
+### Data locality awareness 
+<!-- #Robin -->
 
-### Containerization #Carmen
+### Containerization 
+<!-- #Carmen -->
 
 One principle which constitutes an essential building block of the design of the system architecture is containerization. This practice promotes component isolation and encapsulation, which leverages portability and scalable deployment. The core components of the application, composed of the backend, frontend, simulation etc., are encapsulated using Docker. In this manner, each component is self-contained, allowing seamless deployment and scaling across multiple environemnts. 
 
 ### Load balancing
 
-### Sharding - #Carmen if we manage to implement it I guess
+<!-- ### Sharding - #Carmen if we manage to implement it I guess -->
 
 
-## Performance evaluation #Robin
+## Performance evaluation 
+<!-- #Robin -->
 
 
 ## Limitations and future work
@@ -129,6 +141,6 @@ One principle which constitutes an essential building block of the design of the
 
 ## Conclusion
 
-## Contributions?
+<!-- ## Contributions? -->
 
 <!-- We need an evidence metric that everyone contributed equally in order to get 0.5 extra points but idk if it needs to me mentioned in the report. -->
