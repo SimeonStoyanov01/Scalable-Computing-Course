@@ -17,8 +17,14 @@ This report will outline our efforts while designing the application, our though
 
 ## Data pipelines
 
-### Streamline data #Robin?
+### Streaming data #Robin?
 
+1. Frontend makes a job request over HTTP.
+2. Backend passes this job request on to a kafka topic.
+3. Simulator reads jobs from this kafka topic.
+4. Simulator processes the job.
+5. Simulator continuous produces updates of the job onto a seperate kafka topic.
+6. The backend reads from this kafka topic and groups messages together before passing them to the frontend and possibly also mongoDB.
 <!-- Include pipeline figure if you can -->
 
 ### Historical data #Carmen
@@ -28,7 +34,17 @@ This report will outline our efforts while designing the application, our though
 
 ## Infrastructure Setup
 
-### Simulation - Spark #Robin
+### Simulation
+
+The simulation logic is computed using Apache Spark. Spark is a scalable in-memory fault-tolerant distributed data processing framework running on the JVM. These properties are achieved in spark using the core underlying data structure called [Resillient Distributed Datasets (RDDs)](https://spark.apache.org/docs/3.5.5/rdd-programming-guide.html). For our simulation we configure spark using the Scala programming language.
+
+One can perform computation on RDDs through transformations (e.g. map and reduce) that produce new RDDs. Transformations are lazily evaluated. This means that RDDs may be in an unmaterialised state where they only store a reference to some initial RDD and the transformations required to produce itself when required. This list of transformations is known as the RDD's "lineage".
+
+Spark, when running in a Kubernetes cluster, has two kinds of pods: one driver and multiple executors. The driver runs our user code and tells the executors which transformations to perform on the partitions of the RDD that they hold.
+
+RDDs are considered quite low-level abstractions. It is recommended to implement application logic in one of the higher-level APIs provided in Spark. Our simulation is implemented using the [GraphX](https://spark.apache.org/docs/latest/graphx-programming-guide.html) module. We model the Cartesian grid as a directed graph where every cell is a vertex and they are connected to their 4 nearest neighbours such that all vertices have an in- and out-degree of 4. This approach makes expressing the logic of the iterative Langton-Ants algorthim quite a simple Pregel operation, in-principle handing the implementation details for scalability, fault tolerance and data locality over to Spark.
+
+The Pregel operator requires us to define three functions: the vertex program `vprog`,`sendMsg`, `mergeMsg`. At each iteration the sendMsg operation is called for every "active" edge, it produces cell updates for either of the vertexes of the input edge. Cells that recieve multiple cell updates merge them into one using the `mergeMsg` function. Finally, cells are updated as defined by vertex program.
 
 ### Kafka
 
@@ -92,13 +108,17 @@ Each time step is indexed by the field `simulation_id`, which is a unique auto-g
 
 ## Scalability considerations
 
-### Scalability
+### Scalability #Robin
 
 <!-- discuss horizontal/vertical scaling -->
 
 ### Fault tolerance #Robin
 
+Fault tolerance is handled in Spark via 2 seperate mechanisms. RDDs store a 
+
 ### Data locality awareness #Robin
+
+
 
 ### Containerization #Carmen
 
