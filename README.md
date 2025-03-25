@@ -13,6 +13,16 @@ This report will outline our efforts while designing the application, our though
 
 <!-- Explain core functionality; what can be done through our app -->
 
+
+The architecture of the Langton Ant simulator emerged from multiple discussions on how to adhere to the course requirments, while managing time constraints as well as performance and scalability constraints.
+
+We provisioned three nodes - one master and two worker nodes on HCP's Bateleur cloud, taking up enough resources for our application to perform accordingly while staying under our quouta for the course. We decided to use Terraform for templating our infrastructure, so that we find it easier to provision the necessary machines in a reproducible and easily reconfigurable way. This decision was mainly motivated by the course's requirement for the application to run on a cloud environment. We adopted Kubernetes (K3s) for deployment and lifecycle management, as it represents the industry-standard method for orchestrating applications in cluster environments. 
+
+The core simulation logic we devoted to Apache Spark for its native MapReduce capabilities, which aligns with project's requirements for parralel computation. For providing parameters to the simulator as well as serving the simulation to the frontend, we chose FastAPI for the backend. Additionally, Kafka was integrated to decouple the backend from the simulator and enable fault-tolerant communication. 
+
+The React frontend communicates with the backend via WebSocket, enabling real-time grid updates. Users interact with an adjustable grid, modifying parameters like size and ant count, while a control panel allows starting, pausing, or saving simulations. Saved states are persisted for historical analysis, and a step counter provides live progress tracking. The resulting visualizations highlight emerging patterns as ants traverse the grid, demonstrating complex behavior using simple rules.
+
+
 ## Usage?
 
 ## Data pipelines
