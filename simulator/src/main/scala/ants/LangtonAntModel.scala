@@ -1,5 +1,6 @@
 package com.rug.ants.LangtonAntModel
-import com.fasterxml.jackson.annotation.{JsonCreator, JsonProperty}
+import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
+import com.fasterxml.jackson.core.`type`.TypeReference
 
 object Direction extends Enumeration {
     val North, East, South, West = Value
@@ -19,19 +20,15 @@ object Direction extends Enumeration {
             case East => North
         }
     }
-    @JsonCreator
-    def fromString(@JsonProperty("direction") direction: String): Value = {
-        values.find(_.toString == direction).getOrElse(throw new IllegalArgumentException(s"Invalid Direction: $direction"))
-    }
 }
 
-case class Ant(@JsonProperty("direction") direction: Direction.Value) extends Serializable {
-    // override def toString: String = s"Ant(direction=$direction)"
+class DirectionType extends TypeReference[Direction.type] // Hack because Scala enums are wierd
+
+case class Ant(@JsonScalaEnumeration(classOf[DirectionType]) direction: Direction.Value) extends Serializable {
     def display: String = s"${direction.toString.head}"
 }
 
-case class Cell(val colour: Boolean, val ants: Set[Ant], val rowInd: Int, val colInd: Int) extends Serializable {
-    // override def toString: String = s"Cell(colour=$colour, ants=$ants)"
+case class Cell(val colour: Boolean, val ants: Set[Ant], val rowInd: Int, val colInd: Int, val time: Long) extends Serializable {
     def display: String = {
         if(ants.isEmpty) {
             if (colour) "(#)" else "[ ]"
@@ -44,4 +41,10 @@ case class Cell(val colour: Boolean, val ants: Set[Ant], val rowInd: Int, val co
            }
         }
     }
+}
+
+
+
+case class CellUpdate(val newColour: Option[Boolean], val incomingAnts: Option[Set[Ant]], val newTime: Option[Long]) extends Serializable {
+
 }

@@ -25,6 +25,26 @@ resource "openstack_compute_instance_v2" "master" {
   ]
 }
 
+resource "null_resource" "copy_helm_charts" {
+  depends_on = [ openstack_compute_instance_v2.master  ]
+
+  provisioner "file" {
+    source      = "../charts"
+    destination = "/home/ubuntu/charts"
+  }
+
+  connection {
+    type     = "ssh"
+    user     = "ubuntu"
+    private_key = file("${path.module}/id_rsa")
+    host     = "${openstack_networking_floatingip_v2.float_ip.address}"
+  }
+
+  triggers = {
+    always_run = timestamp() # Changes on every apply
+  }
+}
+
 resource "openstack_compute_instance_v2" "worker" {
   count = 2
   name = "Worker-${count.index + 1}"

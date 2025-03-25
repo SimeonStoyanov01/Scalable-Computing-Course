@@ -1,52 +1,66 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 import json
-# from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-# from kafka import KafkaProducer
+from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
+from kafka import KafkaProducer
 import os
 import asyncio
 import logging
 
 app = FastAPI()
 
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 
-# try:
-#     producer = KafkaProducer(
-#         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-#         value_serializer=lambda v: json.dumps(v).encode('utf-8')
-#     )
-#     logger.info("Kafka Producer successfully initialized")
-# except Exception as e:
-#     logger.error(f"Failed to initialize Kafka Producer: {e}")
-#     producer = None
+try:
+    producer = KafkaProducer(
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    )
+    logger.info("Kafka Producer successfully initialized")
+except Exception as e:
+    logger.error(f"Failed to initialize Kafka Producer: {e}")
+    producer = None
 
 clients = []
 
-# @app.on_event("startup")
-# async def startup_event():
-#     # Start an async task that runs the AIOKafkaConsumer
-#     asyncio.create_task(kafka_listener())
+@app.on_event("startup")
+async def startup_event():
+    # Start an async task that runs the AIOKafkaConsumer
+    asyncio.create_task(kafka_listener())
 
-# async def kafka_listener():
-#     consumer = AIOKafkaConsumer(
-#         "langton_ant_updates",
-#         bootstrap_servers="kafka:9092",
-#         auto_offset_reset="earliest"
-#     )
-#     await consumer.start()
-#     try:
-#         async for msg in consumer:
-#             data_str = msg.value.decode('utf-8')
-#             print("Got simulation update from Kafka:", data_str)
-#             # We are inside an async function, so we can do:
-#             for ws in clients:
-#                 await ws.send_text(data_str)
-#     finally:
-#         await consumer.stop()
+async def kafka_listener():
+    consumer = AIOKafkaConsumer(
+        "langton_ant_updates",
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        auto_offset_reset="earliest"
+    )
+    await consumer.start()
+    try:
+        cells = []
+        time = -1
+        async for msg in consumer:
+            data_str = msg.value.decode('utf-8')
+            print("Got simulation update from Kafka:", data_str)
+            try:
+                data = json.loads(data_str)
+                if not ( time == -1 or data["time"] == time ):
+                    aggregated_data = {"time": time, "cells": cells}
+                    aggregated_json = json.dumps(aggregated_data)
+                    print("Aggregated simulation updates:", aggregated_json)
+                    for ws in clients:
+                        await ws.send_text(aggregated_json)
+                    cells.clear()
+                time = data["time"]
+                del data["time"]
+                cells.append(data)
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON: {e}")
+                continue #skip bad json.
+    finally:
+        await consumer.stop()
 
 @app.get("/")
 async def get():
@@ -55,122 +69,9 @@ async def get():
 @app.get("/initialize_grid")
 async def initialize_grid(websocket: WebSocket, data: dict):
     print("Initializing grid")
-    print(data)
-    # producer.send("initialize_grid", value=data)
-    # producer.flush()
-
-    data1 = {
-	"time": 8,
-  "cells": [
-    {
-      "colour": False,
-      "ants": [ ],
-      "rowInd": 0,
-      "colInd": 1,
-    },
-    {
-      "colour": False,
-      "ants": [ ],
-      "rowInd": 0,
-      "colInd": 2,
-    },
-    {
-      "colour": False,
-      "ants": [
-        {
-          "direction": "North"
-        }
-      ],
-      "rowInd": 1,
-      "colInd": 0,
-    },
-    {
-        "colour": True,
-        "ants": [],
-        "rowInd" : 1,
-        "colInd" : 1,
-    },
-    {
-        "colour": False,
-        "ants": [],
-        "rowInd" : 1,
-        "colInd" : 2,
-    },
-    {
-        "colour": True,
-        "ants": [],
-        "rowInd" : 2,
-        "colInd" : 0,
-    },
-    {
-      "colour": False,
-      "ants": [
-        {
-          "direction": "West"
-        },
-        {
-          "direction": "South"
-        }
-      ],
-      "rowInd": 2,
-      "colInd": 1,
-    },
-    {
-      "colour": False,
-      "ants": [],
-      "rowInd": 2,
-      "colInd": 2,
-    },
-    {
-      "colour": False,
-      "ants": [],
-      "rowInd": 0, "colInd": 0,
-    },
-	]
-}
-
-    await websocket.send_text(json.dumps(data1))
-
-    data2 = {
-	"time": 9,
-    "cells": [
-    {
-        "colour": False,
-        "ants": [
-					{
-						"direction": "East"
-					},
-				],
-        "rowInd" : 0,
-        "colInd" : 0,
-    },
-    {
-      "colour": True,
-      "ants": [],
-      "rowInd": 1,
-      "colInd": 0,
-    },
-    {
-		"colour": True,
-		"ants": [
-			{
-				"direction": "South"
-			},
-		],
-		"rowInd" : 2,
-		"colInd" : 0,
-    },
-    {
-      "colour": True,
-      "ants": [],
-      "rowInd": 2,
-      "colInd": 1,
-    }
-  ]
-}
-    await asyncio.sleep(5)
-    await websocket.send_text(json.dumps(data2))
-
+    # print(data)
+    producer.send("jobs", value=data)
+    producer.flush()
     return {"message": "Grid initialized"}
 
 

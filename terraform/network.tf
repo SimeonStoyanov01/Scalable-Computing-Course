@@ -140,3 +140,33 @@ resource "openstack_networking_secgroup_rule_v2" "basic_https" {
     remote_ip_prefix = "0.0.0.0/0"
     security_group_id = openstack_networking_secgroup_v2.basic.id
 }
+
+resource "openstack_networking_secgroup_rule_v2" "k3s_communication" {
+    direction = "ingress"
+    ethertype = "IPv4"
+    protocol = "tcp"
+    port_range_min = 6443
+    port_range_max = 6443
+    remote_ip_prefix = "0.0.0.0/0"
+    security_group_id = openstack_networking_secgroup_v2.basic.id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "internal_tcp" {
+    direction = "ingress"
+    ethertype = "IPv4"
+    protocol = "tcp"
+    port_range_min = 1
+    port_range_max = 65535
+    remote_ip_prefix = "10.10.0.0/16"
+    security_group_id = openstack_networking_secgroup_v2.basic.id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "internal_udp" {
+    direction = "ingress"
+    ethertype = "IPv4"
+    protocol = "udp"
+    port_range_min = 1
+    port_range_max = 65535
+    remote_ip_prefix = "10.10.0.0/16"
+    security_group_id = openstack_networking_secgroup_v2.basic.id
+}

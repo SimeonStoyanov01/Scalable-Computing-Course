@@ -2,70 +2,149 @@ package com.rug.SimulatorApp
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkContext
-import org.apache.spark.graphx.{EdgeContext, EdgeDirection, Edge, EdgeTriplet, Graph, VertexId}
+import org.apache.spark.graphx.{EdgeContext, EdgeDirection, Edge, EdgeTriplet, Graph, VertexId, Pregel}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx.util.GraphGenerators
-import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction}
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
+import java.io.StringWriter
+import org.apache.kafka.clients.producer.{Producer, Callback, KafkaProducer, ProducerRecord, RecordMetadata}
+import org.apache.kafka.clients.consumer.{Consumer, KafkaConsumer, ConsumerRecords, ConsumerRecord}
+import org.apache.kafka.common.serialization.{StringSerializer, StringDeserializer} 
+import java.util.Properties
+import java.util.Arrays
+import scala.collection.JavaConverters._
+import scala.util.{Try, Success, Failure}
+import com.rug.ants.LangtonAntModel.{Ant, Cell, Direction, CellUpdate}
+import com.rug.jobs.JobRequest
+import java.time.Instant
+import java.time.Duration
 
 object SimulatorApp {
   object MyUtils {
     @transient val objectMapper = new ObjectMapper() // Transient!
     objectMapper.registerModule(DefaultScalaModule)
+    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+  }
 
-    def rowToJson(row: org.apache.spark.sql.Row): String = {
-      try {
-        objectMapper.writeValueAsString(row.getValuesMap(row.schema.fieldNames))
-      } catch {
-        case e: Exception =>
-          println(s"Error converting row to JSON: $e")
-          null
-      }
-    }
+  // Simulator Context
+  object SimCont {
+    val props = new Properties()
+    props.put("bootstrap.servers", "kafka.default.svc.cluster.local:9092")
+    //props.put("bootstrap.servers", "localhost:9092")
+    //props.put("bootstrap.servers", "192.168.49.2:30092")
+    props.put("acks", "all")
+    // props.put("retries", 0)
+    // props.put("batch.size", 16384)
+    // props.put("linger.ms", 1)
+    // props.put("buffer.memory", 33554432)
+    props.put("key.serializer", classOf[StringSerializer].getName)
+    props.put("value.serializer", classOf[StringSerializer].getName)
+    props.put("key.deserializer", classOf[StringDeserializer].getName)
+    props.put("value.deserializer", classOf[StringDeserializer].getName)
+    props.put("group.id", "ants-consumer1")
 
-    val rowToJsonUDF = udf(rowToJson _) // Define the UDF here
+    @transient lazy val producer: Producer[String, String] = new KafkaProducer[String, String](props)
+    @transient lazy val consumer: Consumer[String, String] = new KafkaConsumer[String, String](props)
+    SimCont.consumer.subscribe(Arrays.asList("jobs"))
   }
 
   def main(args: Array[String]): Unit = {
+    // println("Waiting for jobs")
+    // while (true) {
+    //   val jobs = SimCont.consumer.poll(2000)
+    //   for (job <- jobs.asScala) {
+    //     println(s"Received job=$job")
+    //     Try {
+    //       MyUtils.objectMapper.readValue(job.value(), classOf[JobRequest])
+    //     } match {
+    //       case Success(jobRequest) =>
+    //         println(s"Parsed jobRequest=$jobRequest")
+    //         runSimulation(jobRequest)
+    //       case Failure(e) =>
+    //         println(s"Failed to parse job request: ${e.getMessage}")
+    //         println(s"Skipping and commiting message")
+    //     }
+    //   }
+    //   SimCont.consumer.commitSync()
+    // }
 
-    val spark = SparkSession.builder.appName("Simulator").getOrCreate()
+    // SimCont.producer.close()
+    if (args.length == 5) {
+      val gridRows = args(0).toInt
+      val gridCols = args(1).toInt
+      val ants = args(2).toInt
+      val numSteps = args(3).toInt
+      val checkpointInterval = args(4).toInt
+      runSimulation(new JobRequest(gridRows, gridCols, ants, Some(numSteps), Some(checkpointInterval)))
+    } else {
+      println("Usage: SimulatorApp <gridRows> <gridCols> <ants> <numSteps> <checkpointInterval>")
+      // runSimulation(new JobRequest(100, 100, 1000)) // Default values
+    }
+  }
+
+  def runSimulation(jobRequest: JobRequest) {
+    println(s"Running simulation with jobRequest: $jobRequest")
+    val gridRowSize = jobRequest.gridRows
+    val gridColSize = jobRequest.gridCols
+    val numAnts = jobRequest.ants
+    val numSteps = jobRequest.numSteps.getOrElse(10000)
+    val checkpointInterval = jobRequest.checkpointInterval.getOrElse(25)
+
+    val checkpointDir = "s3a://checkpoints/"
+
+    val spark = SparkSession.builder
+      .appName("Simulator")
+      // .config("spark.checkpoint.dir", checkpointDir) // Seems to not work
+      .config("spark.graphx.pregel.checkpointInterval", checkpointInterval)
+      .getOrCreate()
+
     val sc: SparkContext = spark.sparkContext
-    import spark.implicits._
+    println("setting checkpointing")
+    //println(s"ROBIN: ${spark.conf.get("spark.hadoop.fs.s3a.endpoint")}")
+    sc.setCheckpointDir(checkpointDir)
+    println("done setting checkpointing")
+    // sc.setLogLevel("DEBUG")
+    // import spark.implicits._
+    val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(gridRowSize, gridColSize, spark)
 
-    // val gridSize = 20
-    val numRows = if (args.length > 0) args(0).toInt else 20
-    val numCols = if (args.length > 1) args(1).toInt else 20
-    val ants = if (args.length > 2) args(2).toInt else 1
+    val antSquareSize = math.ceil(math.sqrt(numAnts)).toInt
+    val antRowPeriod = Math.ceil((gridRowSize + 1).toDouble / (antSquareSize + 1)).toInt
+    val antColPeriod = Math.ceil((gridColSize + 1).toDouble / (antSquareSize + 1)).toInt
+    val antRowOffset = 0 
+    val antColOffset = 0 
 
-
-    // val emptygraph: Graph[Cell, Direction.Value] = Graph.fromEdges(edges, emptyCell)
-    val emptygraph: Graph[Cell, Direction.Value] = constructGridGraph(numRows, numCols, spark)
-
-
-    var graph = emptygraph.mapVertices((vertexId, oldCell) => {
-      val rowInd = (vertexId / gridSize).toInt 
-      val colInd = (vertexId % gridSize).toInt 
-
-      if (vertexId == 130 || vertexId == 170) { 
-        Cell(false, Set(Ant(Direction.South)), rowInd, colInd) 
-      } else {
-        Cell(false, Set.empty[Ant], rowInd, colInd)
-      }
+    var graph = emptygraph.mapVertices((vertexId, cell) => {
+      cell.copy(
+        ants = if(
+          (cell.rowInd + antRowOffset) % antRowPeriod == antRowPeriod-1
+          && (cell.colInd + antColOffset) % antColPeriod == antColPeriod-1
+          && antSquareSize * ((cell.rowInd+antRowOffset)/antRowPeriod) + ((cell.colInd+1+antColOffset)/antColPeriod) <= numAnts
+          // cell.rowInd == gridRowSize / 2 &&  cell.colInd == gridColSize / 2
+          // || vertexId == 170
+        ) {
+          Set(Ant(Direction.South))
+        } else {
+          Set.empty[Ant]
+        }
+      )
     })
 
-    // var graph = emptygraph.mapVertices((id, _) =>
-    // if (id == 6 || id == 8) new Cell(false, Set(new Ant(Direction.South))) else new Cell(false, Set()))
+    def handleIncomingAnts(id: VertexId, cell: Cell, cellUpdate: CellUpdate): Cell = {
+      val newCell = cell.copy(
+        colour = cellUpdate.newColour.getOrElse(cell.colour),
+        ants = cellUpdate.incomingAnts.getOrElse(cell.ants),
+        time = cellUpdate.newTime.getOrElse(cell.time) + 1
+      )
+      val out = new StringWriter
+      MyUtils.objectMapper.writeValue(out, newCell)
+      val json = out.toString()
+      println(s"ROBIN: SENDING $json")
+      SimCont.producer.send(new ProducerRecord[String, String]("langton_ant_updates", "lmaoheaderamirite", json));
+      newCell
+    }
 
-    def handleIncomingAnts(id: VertexId, cell: Cell, ants: Set[Ant]): Cell 
-      = if (cell.ants.isEmpty) {
-        new Cell(cell.colour, ants, cell.rowInd, cell.colInd) 
-      } else {
-        new Cell(!cell.colour, ants, cell.rowInd, cell.colInd)
-      }
-    
     def antRule(cell: Cell, direction: Direction.Value): Set[Ant] = {
       val newAnts = if(cell.colour) { // Black square
         cell.ants.map(ant => new Ant(ant.direction.rotateCounterClockwise))
@@ -75,106 +154,89 @@ object SimulatorApp {
       newAnts.filter(ant => ant.direction == direction)
     }
 
-    def msgAnts(triplet: EdgeContext[Cell, Direction.Value, Set[Ant]]) {
-      // val dirAnts = triplet.srcAttr.ants.filter(ant => ant.direction == triplet.attr)
+    def msgAnts(triplet: EdgeTriplet[Cell, Direction.Value]): Iterator[(VertexId, CellUpdate)] = {
       val dirAnts = antRule(triplet.srcAttr, triplet.attr)
       if (!dirAnts.isEmpty) {
-        triplet.sendToDst(dirAnts)
-      }
-    }
-
-    def mergeAnts(a: Set[Ant], b: Set[Ant]): Set[Ant] = a ++ b
-
-    def clearAnts(id: VertexId, cell: Cell): Cell 
-      = if (cell.ants.isEmpty) {
-        new Cell(cell.colour, Set(), cell.rowInd, cell.colInd) 
+        val dstUpdate = new CellUpdate(None, Some(dirAnts), Some(triplet.srcAttr.time))
+        val srcUpdate = new CellUpdate(Some(!triplet.srcAttr.colour), Some(Set()), Some(triplet.srcAttr.time))
+        Iterator((triplet.dstId, dstUpdate), (triplet.srcId, srcUpdate))
       } else {
-        new Cell(!cell.colour, Set(), cell.rowInd, cell.colInd)
+        Iterator()
       }
+    }
     
+    def mergeCellUpdates(a: CellUpdate, b: CellUpdate): CellUpdate = 
+      new CellUpdate(
+        (a.newColour, b.newColour) match {
+          case (Some(x), None) => Some(x)
+          case (None, Some(x)) => Some(x)
+          case (None, None) => None
+          case (Some(x), Some(y)) => {
+            //assume(x==y, s"Error: Invariant not satisfied: One cell recieved multiple different colour updates. Recieved ($a) and ($b).")
+            if(x!=y) {
+              println(s"ROBIN Error: Invariant not satisfied: One cell recieved multiple different colour updates. Recieved ($a) and ($b).")
+            }
+            Some(x)
+          }
+        },
+        (a.incomingAnts, b.incomingAnts) match {
+          case (Some(x), None) => Some(x)
+          case (None, Some(y)) => Some(y)
+          case (None, None) => None
+          case (Some(x), Some(y)) => Some(x ++ y)
+        },
+        (a.newTime, b.newTime) match {
+          case (Some(x), None) => Some(x)
+          case (None, Some(x)) => Some(x)
+          case (None, None) => None
+          case (Some(x), Some(y)) => {
+            assume(x==y, "Error: Invariant not satisfied: Time updates are not equal.")
+            Some(x)
+          }
+        },
+      )
 
-    for (i <- 1 to 20) {
-      val messages = graph.aggregateMessages[Set[Ant]](msgAnts, mergeAnts).cache()
 
-      graph = graph.mapVertices(clearAnts).cache()
+    // println("pregellssss")
+    val startTime = Instant.now()
 
-      graph = graph.joinVertices(messages)(handleIncomingAnts).cache()
-    }
-    printPrettyGrid(graph, gridSize)
+    println(s"ROBIN: starting pregel")
+    val finalGraph = graph.pregel(new CellUpdate(None, None, None), numSteps)(
+      handleIncomingAnts, msgAnts, mergeCellUpdates)
+    println(s"ROBIN: done pregelling")
+      
+    printPrettyGrid(finalGraph, gridRowSize, gridColSize)
 
-    // Periodic checkpoint to truncate lineage:
-    if (i % 10 == 0) {
-      graph.checkpoint()
-    }
-    // Force an action so Spark actually executes the above transformations
-    graph.vertices.count() 
+    val endTime = Instant.now()
 
+    val duration = Duration.between(startTime, endTime)
 
-    graph.vertices.toDF
-      // .withColumnRenamed("_2", "value")
-      // .withColumn("value", col("_2").cast("string"))
-      .withColumn("value", to_json(struct($"_2.*"))) 
-      // .withColumn("value", udf(MyUtils.rowToJson _).apply(struct("*"))) // Apply the UDF
-      .select("value") // Select only the JSON string column
-      .write
-      // .format("console")
-      // .save()
-      .format("kafka")
-      .option("kafka.bootstrap.servers", "broker:29092")
-      .option("topic", "quickstart.sampleData")
-      .save()
+    println(s"Simulation time: ${duration.toMillis} milliseconds")
 
-    // while(true){
-    //    scala.io.StdIn.readLine() // Hack for keeping spark open
-    // }
-
-    spark.stop()
+    //spark.stop()
   }
 
-  def createGrid(sc: SparkContext, n: Int): RDD[Edge[Direction.Value]] = {
-    val edgesRDD: RDD[Edge[Direction.Value]] = sc.parallelize(0 until (n * n)).flatMap { vertexIdLong =>
-      val vertexId = vertexIdLong.toLong
-      var neighborEdges = Seq[Edge[Direction.Value]]()
-
-      // Edge to East (right)
-      if ((vertexId + 1) < (n * n) && (vertexId % n) < (n - 1)) { // Not last column and within bounds
-        neighborEdges = neighborEdges ++ Seq(
-          Edge(vertexId, vertexId + 1, Direction.East),
-          Edge(vertexId + 1, vertexId, Direction.West) // Reverse direction
-        )
-      }
-
-      // Edge to South (down)
-      if ((vertexId + n) < (n * n)) { // Within bounds
-        neighborEdges = neighborEdges ++ Seq(
-          Edge(vertexId, vertexId + n, Direction.South),
-          Edge(vertexId + n, vertexId, Direction.North) // Reverse direction
-        )
-      }
-      neighborEdges
-    }
-    edgesRDD
-  }
-  def printPrettyGrid(graph: Graph[Cell, Direction.Value], n: Int): Unit = {
+  def printPrettyGrid(graph: Graph[Cell, Direction.Value], rowSize: Int, colSize: Int): Unit = {
     val vertices = graph.vertices.collect().sortBy(_._1)
 
-    for (row <- 0 until n) {
-      for (col <- 0 until n) {
-        val vertexId = (row * n + col).toLong
-        val cellInfo = vertices.find(_._1 == vertexId).map(_._2).getOrElse(new Cell(false, Set(), 0, 0))
+    for (row <- 0 until rowSize) {
+      for (col <- 0 until colSize) {
+        val vertexId = (row * colSize + col).toLong
+        val cellInfo = vertices.find(_._1 == vertexId).map(_._2).getOrElse(new Cell(false, Set(), 0, 0, 0))
         print(s"${cellInfo.display} ")
       }
       println()
     }
   }
-  def constructGridGraph(n: Int, m: Int, spark: SparkSession): Graph[Cell, Direction.Value] = {
+
+  def constructGridGraph(rowSize: Int, colSize: Int, spark: SparkSession): Graph[Cell, Direction.Value] = {
     import spark.implicits._
 
     // 1. Create RDD of Cells (Vertices)
-    val verticesRDD: RDD[(VertexId, Cell)] = spark.sparkContext.parallelize(0 until n).flatMap { rowInd =>
-        (0 until m).map { colInd =>
-            val vertexId: VertexId = rowInd.toLong * n + colInd // Unique vertex ID based on row and col
-            (vertexId, Cell(false, Set.empty[Ant], rowInd, colInd)) // Initial cells are white and empty
+    val verticesRDD: RDD[(VertexId, Cell)] = spark.sparkContext.parallelize(0 until rowSize).flatMap { rowInd =>
+        (0 until colSize).map { colInd =>
+            val vertexId: VertexId = rowInd.toLong * colSize + colInd // Unique vertex ID based on row and col
+            (vertexId, Cell(false, Set.empty[Ant], rowInd, colInd, 0)) // Initial cells are white and empty
         }
     }
 
@@ -183,16 +245,16 @@ object SimulatorApp {
         val rowInd = cell.rowInd
         val colInd = cell.colInd
         val neighborIndices = Seq(
-            (rowInd - 1, colInd, Direction.North),
-            (rowInd + 1, colInd, Direction.South),
-            (rowInd, colInd - 1, Direction.West),
-            (rowInd, colInd + 1, Direction.East)
+            ((rowSize + rowInd - 1) % rowSize, colInd, Direction.North),
+            ((rowInd + 1) % rowSize, colInd, Direction.South),
+            (rowInd, (colInd - 1 + colSize) % colSize, Direction.West),
+            (rowInd, (colInd + 1) % colSize, Direction.East)
         )
 
         neighborIndices.flatMap { case (neighborRow, neighborCol, direction) =>
-            if (neighborRow >= 0 && neighborRow < n && neighborCol >= 0 && neighborCol < n) {
+            if (neighborRow >= 0 && neighborRow < rowSize && neighborCol >= 0 && neighborCol < colSize) {
                 val srcVertexId = vertexId
-                val dstVertexId: VertexId = neighborRow.toLong * n + neighborCol
+                val dstVertexId: VertexId = neighborRow.toLong * colSize + neighborCol
                 Some(Edge(srcVertexId, dstVertexId, direction))
             } else {
                 None // Filter out of bounds edges
@@ -200,7 +262,19 @@ object SimulatorApp {
         }
     }
 
+    // Display vertices and their partitions
+    println("\nROBIN--- Vertices RDD Partitioning ---")
+    verticesRDD.mapPartitionsWithIndex { (partitionId, iterator) =>
+      iterator.map(vertex => s"ROBINPartition: $partitionId, Vertex: $vertex")
+    }.collect().foreach(println)
+
+    // Display edges and their partitions with source and destination vertices
+    println("\nROBIN--- Edges RDD Partitioning ---")
+    edgesRDD.mapPartitionsWithIndex { (partitionId, iterator) =>
+      iterator.map(edge => s"ROBINPartition: $partitionId, Edge: Source(${edge.srcId}) -> Destination(${edge.dstId}), Direction: ${edge.attr}")
+    }.collect().foreach(println)
+
     // 3. Construct the Graph
     Graph(verticesRDD, edgesRDD)
-    }
+  }
 }
