@@ -3,19 +3,26 @@
 set -e
 
 DRIVER_POD_NAME=$(kubectl get pods -o name | grep "ants-simulator-.*-driver" | cut -d'/' -f2)
+
 echo "Driver pod = $DRIVER_POD_NAME"
 
 kubectl delete pod $DRIVER_POD_NAME || true
 
 helm uninstall simulator || true
 
-helm upgrade --install \
-    --set cmdParams[0].value="$1" \
-    --set cmdParams[1].value="$2" \
-    --set cmdParams[2].value="$3" \
-    --set cmdParams[3].value="$4" \
-    --set cmdParams[4].value="$5" \
-    simulator . 
+until \
+    helm upgrade --install \
+        --set cmdParams[0].value="$1" \
+        --set cmdParams[1].value="$2" \
+        --set cmdParams[2].value="$3" \
+        --set cmdParams[3].value="$4" \
+        --set cmdParams[4].value="$5" \
+        --set cmdParams[5].value="$6" \
+        simulator .; do
+    echo "installing simulator failed"
+    echo "$(date '+%H:%M:%S') installing simulator failed" >> simtimeslogs.txt
+    sleep 5
+done
 
 echo "Waiting for driver pod"
 DRIVER_POD_NAME=""
@@ -37,6 +44,10 @@ while true; do
   fi
 done
 
-echo "Driver pod name: $DRIVER_POD_NAME"
+echo "$(date '+%H:%M:%S') Driver pod name: $DRIVER_POD_NAME"
 
-kubectl logs -f $DRIVER_POD_NAME
+until kubectl logs -f $DRIVER_POD_NAME; do
+    echo "$(date '+%H:%M:%S') log failed trying to connect to pod again" >> simtimeslogs.txt
+    echo "log failed trying to connect to pod again"
+    sleep 30
+done

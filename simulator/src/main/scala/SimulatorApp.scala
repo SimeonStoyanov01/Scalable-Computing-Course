@@ -51,35 +51,41 @@ object SimulatorApp {
   }
 
   def main(args: Array[String]): Unit = {
-    // println("Waiting for jobs")
-    // while (true) {
-    //   val jobs = SimCont.consumer.poll(2000)
-    //   for (job <- jobs.asScala) {
-    //     println(s"Received job=$job")
-    //     Try {
-    //       MyUtils.objectMapper.readValue(job.value(), classOf[JobRequest])
-    //     } match {
-    //       case Success(jobRequest) =>
-    //         println(s"Parsed jobRequest=$jobRequest")
-    //         runSimulation(jobRequest)
-    //       case Failure(e) =>
-    //         println(s"Failed to parse job request: ${e.getMessage}")
-    //         println(s"Skipping and commiting message")
-    //     }
-    //   }
-    //   SimCont.consumer.commitSync()
-    // }
+    if (args.length == 0) {
+      println("Waiting for jobs")
+      while (true) {
+        val jobs = SimCont.consumer.poll(2000)
+        for (job <- jobs.asScala) {
+          println(s"Received job=$job")
+          Try {
+            MyUtils.objectMapper.readValue(job.value(), classOf[JobRequest])
+          } match {
+            case Success(jobRequest) =>
+              println(s"Parsed jobRequest=$jobRequest")
+              runSimulation(jobRequest)
+            case Failure(e) =>
+              println(s"Failed to parse job request: ${e.getMessage}")
+              println(s"Skipping and commiting message")
+          }
+        }
+        SimCont.consumer.commitSync()
+      }
 
-    // SimCont.producer.close()
-    if (args.length == 5) {
+      SimCont.producer.close()
+    }
+
+    if (args.length == 6) {
       val gridRows = args(0).toInt
       val gridCols = args(1).toInt
       val ants = args(2).toInt
       val numSteps = args(3).toInt
       val checkpointInterval = args(4).toInt
-      runSimulation(new JobRequest(gridRows, gridCols, ants, Some(numSteps), Some(checkpointInterval)))
+      val repeatSimulation = args(5).toInt
+      for (i <- 1 to repeatSimulation) {
+        runSimulation(new JobRequest(gridRows, gridCols, ants, Some(numSteps), Some(checkpointInterval)))
+      }
     } else {
-      println("Usage: SimulatorApp <gridRows> <gridCols> <ants> <numSteps> <checkpointInterval>")
+      println("Usage: SimulatorApp <gridRows> <gridCols> <ants> <numSteps> <checkpointInterval> <repeat>")
       // runSimulation(new JobRequest(100, 100, 1000)) // Default values
     }
   }
