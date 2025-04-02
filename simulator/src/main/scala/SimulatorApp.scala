@@ -57,6 +57,7 @@ object SimulatorApp {
         val jobs = SimCont.consumer.poll(2000)
         for (job <- jobs.asScala) {
           println(s"Received job=$job")
+          SimCont.consumer.commitSync()
           Try {
             MyUtils.objectMapper.readValue(job.value(), classOf[JobRequest])
           } match {
@@ -65,10 +66,8 @@ object SimulatorApp {
               runSimulation(jobRequest)
             case Failure(e) =>
               println(s"Failed to parse job request: ${e.getMessage}")
-              println(s"Skipping and commiting message")
           }
         }
-        SimCont.consumer.commitSync()
       }
 
       SimCont.producer.close()

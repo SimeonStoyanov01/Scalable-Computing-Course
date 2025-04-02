@@ -10,6 +10,8 @@ kubectl delete pod $DRIVER_POD_NAME || true
 
 helm uninstall simulator || true
 
+ip_address=$(ip addr show | grep -oE '10\.10\.[0-9]+\.[0-9]+/16' | cut -d '/' -f 1)
+
 until \
     helm upgrade --install \
         --set cmdParams[0].value="$1" \
@@ -18,6 +20,7 @@ until \
         --set cmdParams[3].value="$4" \
         --set cmdParams[4].value="$5" \
         --set cmdParams[5].value="$6" \
+        --set localmasterip="$ip_address" \
         simulator .; do
     echo "installing simulator failed"
     echo "$(date '+%H:%M:%S') installing simulator failed" >> simtimeslogs.txt
