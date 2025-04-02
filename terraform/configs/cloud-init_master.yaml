@@ -32,6 +32,9 @@ runcmd:
     export HELM_KUBECONFIG=/etc/rancher/k3s/k3s.yaml
     chmod 600 /etc/rancher/k3s/k3s.yaml
     chown ubuntu:ubuntu /etc/rancher/k3s/k3s.yaml
+    echo "export PATH=$PATH:/usr/local/bin" >> /home/ubuntu/.bashrc
+    echo "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> /home/ubuntu/.bashrc
+    echo "export HELM_KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> /home/ubuntu/.bashrc
 
     curl -Lo k9s.tar.gz https://github.com/derailed/k9s/releases/download/v0.28.1/k9s_Linux_amd64.tar.gz
     tar -xzf k9s.tar.gz
@@ -71,7 +74,9 @@ runcmd:
 
     helm upgrade --install backend $chartsdir/backend --values $chartsdir/backend/values.yaml
     helm upgrade --install frontend $chartsdir/frontend --values $chartsdir/frontend/values.yaml
-    kubectl apply -f $chartsdir/simulator/submit-spark-job.yaml
+
+    ip_address=$(ip addr show | grep -oE '10\.10\.[0-9]+\.[0-9]+/16' | cut -d '/' -f 1)
+    helm upgrade --install --set localmasterip="$ip_address" simulator $chartsdir/simulator
 
 
 # Logging

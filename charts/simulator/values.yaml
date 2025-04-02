@@ -10,6 +10,7 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+# localmasterip: 10.10.0.158
 # cmdParams:
 #   - value: "10"
 #   - value: "10"
