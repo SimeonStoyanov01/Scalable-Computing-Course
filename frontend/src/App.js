@@ -11,7 +11,8 @@ function App() {
   const [ants, setAntNumber] = useState(5);
   const [saveSimulation, setSaveSimulation] = useState(false);
   const [simulationRunning, setSimulationStatus] = useState(false);
-  const {connected, initialize_grid, onMessage} = useWebSocketClient("ws://localhost:8000/ws")
+  // const {connected, initialize_grid, onMessage} = useWebSocketClient("ws://localhost:8000/ws")
+  const {connected, initialize_grid, onMessage} = useWebSocketClient("ws://MY_APP_WEBSOCKET_URL/ws")
   const [updates, setUpdates] = useState(null);
   const [timestep, setTimestep] = useState(0);
 

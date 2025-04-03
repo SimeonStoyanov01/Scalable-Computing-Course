@@ -51,7 +51,7 @@ object SimulatorApp {
   }
 
   def main(args: Array[String]): Unit = {
-    if (args.length != 6) {
+    if (args.length == 0) {
       println("Waiting for jobs")
       while (true) {
         val jobs = SimCont.consumer.poll(2000)
@@ -73,19 +73,19 @@ object SimulatorApp {
       SimCont.producer.close()
     }
 
-    if (args.length == 6) {
+    if (args.length == 7) {
       val gridRows = args(0).toInt
       val gridCols = args(1).toInt
       val ants = args(2).toInt
       val numSteps = args(3).toInt
       val checkpointInterval = args(4).toInt
       val repeatSimulation = args(5).toInt
+      val waitTime = args(6).toInt
       for (i <- 1 to repeatSimulation) {
-        runSimulation(new JobRequest(gridRows, gridCols, ants, Some(numSteps), Some(checkpointInterval), None))
+        runSimulation(new JobRequest(gridRows, gridCols, ants, Some(numSteps), Some(checkpointInterval), Some(waitTime)))
       }
     } else {
-      println("Usage: SimulatorApp <gridRows> <gridCols> <ants> <numSteps> <checkpointInterval> <repeat>")
-      // runSimulation(new JobRequest(100, 100, 1000)) // Default values
+      println("Usage: SimulatorApp <gridRows> <gridCols> <ants> <numSteps> <checkpointInterval> <repeat> <waitTime>")
     }
   }
 
@@ -203,7 +203,7 @@ object SimulatorApp {
       )
 
 
-    // println("pregellssss")
+    println("Waiting for kubernetes to reconnect.")
     Thread.sleep(waitTime)
     val startTime = Instant.now()
 

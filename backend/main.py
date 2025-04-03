@@ -6,6 +6,7 @@ from kafka import KafkaProducer
 import os
 import asyncio
 import logging
+import time
 
 app = FastAPI()
 
@@ -37,30 +38,34 @@ async def kafka_listener():
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
         auto_offset_reset="earliest"
     )
-    await consumer.start()
-    try:
-        cells = []
-        time = -1
-        async for msg in consumer:
-            data_str = msg.value.decode('utf-8')
-            print("Got simulation update from Kafka:", data_str)
-            try:
-                data = json.loads(data_str)
-                if not ( time == -1 or data["time"] == time ):
-                    aggregated_data = {"time": time, "cells": cells}
-                    aggregated_json = json.dumps(aggregated_data)
-                    print("Aggregated simulation updates:", aggregated_json)
-                    for ws in clients:
-                        await ws.send_text(aggregated_json)
-                    cells.clear()
-                time = data["time"]
-                del data["time"]
-                cells.append(data)
-            except json.JSONDecodeError as e:
-                print(f"Error decoding JSON: {e}")
-                continue #skip bad json.
-    finally:
-        await consumer.stop()
+    while True:
+        await consumer.start()
+        try:
+            cells = []
+            time = -1
+            async for msg in consumer:
+                data_str = msg.value.decode('utf-8')
+                print("Got simulation update from Kafka:", data_str)
+                try:
+                    data = json.loads(data_str)
+                    if not ( time == -1 or data["time"] == time ):
+                        aggregated_data = {"time": time, "cells": cells}
+                        aggregated_json = json.dumps(aggregated_data)
+                        print("Aggregated simulation updates:", aggregated_json)
+                        for ws in clients:
+                            await ws.send_text(aggregated_json)
+                        cells.clear()
+                    time = data["time"]
+                    del data["time"]
+                    cells.append(data)
+                except json.JSONDecodeError as e:
+                    print(f"Error decoding JSON: {e}")
+                    continue #skip bad json.
+        finally:
+            await consumer.stop()
+            print(f"Stopped kafka consumer, sleeping before trying again")
+            time.sleep(10)
+            
 
 @app.get("/")
 async def get():

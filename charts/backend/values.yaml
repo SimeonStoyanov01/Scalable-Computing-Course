@@ -6,28 +6,15 @@ image:
   pullPolicy: Always
 
 service:
-  type: ClusterIP
+  type: NodePort
   port: 8000
 
 ingress:
-  enabled: true
+  # enabled: true
+  enabled: false
   host: backend.example.com
   path: /
 
 envVars:
   - name: KAFKA_BOOTSTRAP_SERVERS
     value: kafka.default.svc.cluster.local:9092
-
-resources:
-  requests:
-    memory: "128Mi"
-    cpu: "250m"
-  limits:
-    memory: "256Mi"
-    cpu: "500m"
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 5
-  targetCPUUtilizationPercentage: 80

@@ -1,23 +1,24 @@
 replicaCount: 1
 
 image:
-  repository: carmenzz/group-3-project-frontend
+  # repository: carmenzz/group-3-project-frontend
+  repository: makenjoy/frontend
   tag: latest
   pullPolicy: Always
 
 service:
-  type: ClusterIP
+  type: NodePort
   port: 80
-  targetport: 3000
 
 ingress:
-  enabled: true
+  enabled: false
   host: frontend.example.com
   path: /
 
 envVars:
   - name: KAFKA_BOOTSTRAP_SERVERS
     value: kafka.default.svc.cluster.local:9092
+    
 
 resources:
   requests:

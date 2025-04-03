@@ -25,6 +25,9 @@ spec:
         - name: {{ .name }}
           value: {{ .value }}
         {{- end }}
+        - name: MY_APP_WEBSOCKET_URL
+          value: {{.Values.publicmasterip}}
+
         resources:
           requests:
             memory: {{ .Values.resources.requests.memory }}
