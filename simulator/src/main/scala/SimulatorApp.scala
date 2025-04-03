@@ -81,7 +81,7 @@ object SimulatorApp {
       val checkpointInterval = args(4).toInt
       val repeatSimulation = args(5).toInt
       for (i <- 1 to repeatSimulation) {
-        runSimulation(new JobRequest(gridRows, gridCols, ants, Some(numSteps), Some(checkpointInterval)))
+        runSimulation(new JobRequest(gridRows, gridCols, ants, Some(numSteps), Some(checkpointInterval), None))
       }
     } else {
       println("Usage: SimulatorApp <gridRows> <gridCols> <ants> <numSteps> <checkpointInterval> <repeat>")
@@ -96,6 +96,7 @@ object SimulatorApp {
     val numAnts = jobRequest.ants
     val numSteps = jobRequest.numSteps.getOrElse(10)
     val checkpointInterval = jobRequest.checkpointInterval.getOrElse(25)
+    val waitTime = jobRequest.waitBeforeRun.getOrElse(5000)
 
     val checkpointDir = "s3a://checkpoints/"
 
@@ -203,6 +204,7 @@ object SimulatorApp {
 
 
     // println("pregellssss")
+    Thread.sleep(1000)
     val startTime = Instant.now()
 
     println(s"ROBIN: starting pregel")
