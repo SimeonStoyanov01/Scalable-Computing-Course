@@ -46,7 +46,7 @@ async def shutdown_db_client():
     app.mongodb_client.close()
 
 @app.on_event("startup")
-async def startup_event():
+async def initialize_variables():
     app.state.save_simulation = False
     app.state.simulation_name = None
     app.state.simulation_id = None
@@ -110,14 +110,14 @@ async def get_simulation_names():
     unique_names = await app.collection.distinct("simulation_name")
     return unique_names
 
-
-@app.get("/simulation/{simulation_id}")
-async def get_simulation(simulation_id: str):
-    simulation = await app.collection.find_one({"_id": simulation_id})
-    if simulation:
-        return {"simulation": simulation}
-    else:
-        return {"error": "Simulation not found"}
+@app.get("/simulations/{simulation_name}")
+async def get_simulation_steps(simulation_name: str):
+    simulations = []
+    async for simulation in app.collection.find({"simulation_name": simulation_name}):
+        simulation["_id"] = str(simulation["_id"])
+        simulations.append(simulation)
+    return {"simulations": simulations}
+        
 
 # @app.get("/initialize_grid")
 async def initialize_grid(websocket: WebSocket, data: dict):
@@ -177,18 +177,17 @@ async def websocket_endpoint(websocket: WebSocket):
             if command["action"] == "get_simulation_data":
                 simulation_name = command.get("simulation_name")
                 print(f"Getting simulation data for name: {simulation_name}")
-                data = await get_simulation(simulation_name)
+                data = await get_simulation_steps(simulation_name)
                 if "error" in data:
                     response = {
                         "action": "get_simulation_data_response",
                         "error": data["error"]
                     }
                 else:
-                    response = {
-                        "action": "get_simulation_data_response",
-                        "simulation": data["simulation"]
-                    }
-                await websocket.send_text(json.dumps(response))
+                    for simulation in data["simulations"]:
+                        simulation["_id"] = str(simulation["_id"])
+                        await websocket.send_text(json.dumps(simulation))
+                        await asyncio.sleep(0.2)  
 
     except WebSocketDisconnect:
         clients.remove(websocket)

@@ -101,6 +101,9 @@ function App() {
             get_simulations={get_simulations}
             simulationIDs={simulationIDs}
             setSimulationIDs={setSimulationIDs}
+            selectedSimulation={selectedSimulation}
+            setSelectedSimulation={setSelectedSimulation}
+            get_simulation_data={get_simulation_data}
             onMessage={onMessage}/>
 
           <p>Simulation timestep: {timestep}</p>

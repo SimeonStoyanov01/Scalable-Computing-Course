@@ -8,11 +8,16 @@ function ControlPanel({gridRows, setGridRows,
         simulationName, setSimulationName, 
         selectedSimulation, setSelectedSimulation, 
         simulationIDs, setSimulationIDs,
-        initialize_grid, get_simulations, onMessage}) {
+        initialize_grid, get_simulations, get_simulation_data, onMessage}) {
     
     const handleStart = () => {
         setSimulationStatus(true);
-        initialize_grid({gridRows, gridCols, ants, saveSimulation, simulationName});
+        if (selectedSimulation) {
+            console.log("Selected simulation ID:", selectedSimulation);
+            get_simulation_data(selectedSimulation);
+        } else {
+            initialize_grid({gridRows, gridCols, ants, saveSimulation, simulationName});
+        }
     }
 
     const handleFocus = () => {
@@ -23,7 +28,7 @@ function ControlPanel({gridRows, setGridRows,
     const handleSimulationSelect = (e) => {
         const simId = e.target.value;
         setSelectedSimulation(simId);
-        console.log("Selected simulation ID:", simId);
+        console.log("Selected simulation name:", simId);
     };
 
     return (
