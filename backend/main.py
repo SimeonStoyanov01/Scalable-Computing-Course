@@ -6,6 +6,8 @@ from kafka import KafkaProducer
 import os
 import asyncio
 import logging
+import motor.motor_asyncio
+import uuid
 
 app = FastAPI()
 
@@ -13,6 +15,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+MONGO_INITDB_ROOT_USERNAME = os.getenv("MONGO_INITDB_ROOT_USERNAME", "myuser")
+MONGO_INITDB_ROOT_PASSWORD = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "secret")
+MONGO_HOSTNAME            = os.getenv("MONGO_HOSTNAME", "mongo")  # or just "mongo"
+MONGO_CONNECTION_STRING   = (
+    f"mongodb://{MONGO_INITDB_ROOT_USERNAME}:{MONGO_INITDB_ROOT_PASSWORD}"
+    f"@{MONGO_HOSTNAME}:27017/?authSource=admin"
+)
 
 try:
     producer = KafkaProducer(
@@ -25,6 +34,22 @@ except Exception as e:
     producer = None
 
 clients = []
+
+@app.on_event("startup")
+async def startup_db_client():
+    app.mongodb_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_CONNECTION_STRING)
+    app.database = app.mongodb_client["langton_ant"] 
+    app.collection = app.database["simulations"]
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    app.mongodb_client.close()
+
+@app.on_event("startup")
+async def startup_event():
+    app.state.save_simulation = False
+    app.state.simulation_name = None
+    app.state.simulation_id = None
 
 @app.on_event("startup")
 async def startup_event():
@@ -46,12 +71,18 @@ async def kafka_listener():
             print("Got simulation update from Kafka:", data_str)
             try:
                 data = json.loads(data_str)
+                saveSimulation = data.get("saveSimulation", False)
                 if not ( time == -1 or data["time"] == time ):
                     aggregated_data = {"time": time, "cells": cells}
                     aggregated_json = json.dumps(aggregated_data)
                     print("Aggregated simulation updates:", aggregated_json)
                     for ws in clients:
                         await ws.send_text(aggregated_json)
+                    if app.state.save_simulation:
+                        aggregated_json = json.loads(aggregated_json)
+                        aggregated_json["simulation_id"] = app.state.simulation_id
+                        aggregated_json["simulation_name"] = app.state.simulation_name
+                        app.database.simulations.insert_one(aggregated_json)
                     cells.clear()
                 time = data["time"]
                 del data["time"]
@@ -66,7 +97,29 @@ async def kafka_listener():
 async def get():
     return {"message": "Hello World"}
 
-@app.get("/initialize_grid")
+@app.get("/simulations")
+async def get_simulations():
+    simulations = []
+    async for simulation in app.collection.find():
+        simulation["_id"] = str(simulation["_id"])
+        simulations.append(simulation)
+    return {"simulations": simulations}
+
+@app.get("/simulations/names")
+async def get_simulation_names():
+    unique_names = await app.collection.distinct("simulation_name")
+    return unique_names
+
+
+@app.get("/simulation/{simulation_id}")
+async def get_simulation(simulation_id: str):
+    simulation = await app.collection.find_one({"_id": simulation_id})
+    if simulation:
+        return {"simulation": simulation}
+    else:
+        return {"error": "Simulation not found"}
+
+# @app.get("/initialize_grid")
 async def initialize_grid(websocket: WebSocket, data: dict):
     print("Initializing grid")
     # print(data)
@@ -91,18 +144,51 @@ async def websocket_endpoint(websocket: WebSocket):
                 grid_rows = command.get("gridRows")
                 grid_cols = command.get("gridCols")
                 ants = command.get("ants")
+                saveSimulation = command.get("saveSimulation", False)
+                simulationName = command.get("simulationName", "default")
+                app.state.save_simulation = saveSimulation
+                app.state.simulation_name = simulationName
+                app.state.simulation_id = str(uuid.uuid4())
+
                 print(f"Initializing grid with: rows={grid_rows}, cols={grid_cols}, ants={ants}")
                 # logger.info(f"Initializing grid with: rows={grid_rows}, cols={grid_cols}, ants={ants}")
                 command_data = {
                     "action": "initialize_grid",
                     "gridRows": grid_rows,
                     "gridCols": grid_cols,
-                    "ants": ants
+                    "ants": ants,
+                    "saveSimulation": saveSimulation,
+                    "simulationName": simulationName
                 } 
                 await initialize_grid(websocket, command_data)
 
             if command['action'] == 'update_grid':
                 await websocket.send_text("Update grid")
+
+            if command["action"] == "get_simulations":
+                print("Getting simulations")
+                data = await get_simulation_names() 
+                response = {
+                    "action": "get_simulations_response",
+                    "simulation_names": data
+                }
+                await websocket.send_text(json.dumps(response))
+
+            if command["action"] == "get_simulation_data":
+                simulation_name = command.get("simulation_name")
+                print(f"Getting simulation data for name: {simulation_name}")
+                data = await get_simulation(simulation_name)
+                if "error" in data:
+                    response = {
+                        "action": "get_simulation_data_response",
+                        "error": data["error"]
+                    }
+                else:
+                    response = {
+                        "action": "get_simulation_data_response",
+                        "simulation": data["simulation"]
+                    }
+                await websocket.send_text(json.dumps(response))
 
     except WebSocketDisconnect:
         clients.remove(websocket)

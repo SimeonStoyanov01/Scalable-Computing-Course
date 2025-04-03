@@ -1,10 +1,30 @@
 import { useState, useEffect } from "react"
 
-function ControlPanel({gridRows, setGridRows, gridCols, setGridCols, ants, setAntNumber, saveSimulation, setSaveSimulation, simulationRunning, setSimulationStatus, initialize_grid}) {
+function ControlPanel({gridRows, setGridRows, 
+        gridCols, setGridCols, 
+        ants, setAntNumber, 
+        saveSimulation, setSaveSimulation, 
+        simulationRunning, setSimulationStatus, 
+        simulationName, setSimulationName, 
+        selectedSimulation, setSelectedSimulation, 
+        simulationIDs, setSimulationIDs,
+        initialize_grid, get_simulations, onMessage}) {
+    
     const handleStart = () => {
         setSimulationStatus(true);
-        initialize_grid({gridRows, gridCols, ants});
+        initialize_grid({gridRows, gridCols, ants, saveSimulation, simulationName});
     }
+
+    const handleFocus = () => {
+        console.log("Dropdown focused => retrieving simulations");
+        get_simulations();
+    };
+    
+    const handleSimulationSelect = (e) => {
+        const simId = e.target.value;
+        setSelectedSimulation(simId);
+        console.log("Selected simulation ID:", simId);
+    };
 
     return (
         <div>
@@ -51,6 +71,35 @@ function ControlPanel({gridRows, setGridRows, gridCols, setGridCols, ants, setAn
                 </label>
             </div>
             <hr/>
+
+            <div>
+                <label>
+                    Simulation Name: 
+                    <input 
+                    type="text" 
+                    value={simulationName} 
+                    onChange={(e) => setSimulationName(e.target.value)} 
+                    disabled={simulationRunning}
+                    />
+                </label>
+            </div>
+            <hr/>
+
+            <div>
+                <label>Select a saved simulation:</label>
+                <select
+                value={selectedSimulation}
+                onChange={handleSimulationSelect}
+                onFocus={handleFocus}
+                >
+                <option value="">-- pick an option --</option>
+                {simulationIDs.map((id) => (
+                    <option key={id} value={id}>
+                    {id}
+                    </option>
+                ))}
+                </select>
+            </div>
 
             <div>
                 <label>

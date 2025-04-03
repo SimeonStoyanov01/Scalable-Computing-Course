@@ -11,9 +11,12 @@ function App() {
   const [ants, setAntNumber] = useState(5);
   const [saveSimulation, setSaveSimulation] = useState(false);
   const [simulationRunning, setSimulationStatus] = useState(false);
-  const {connected, initialize_grid, onMessage} = useWebSocketClient("ws://localhost:8000/ws")
+  const {connected, initialize_grid, get_simulations, get_simulation_data, onMessage} = useWebSocketClient("ws://localhost:8000/ws")
   const [updates, setUpdates] = useState(null);
   const [timestep, setTimestep] = useState(0);
+  const [simulationName, setSimulationName] = useState("Simulation 1");
+  const [selectedSimulation, setSelectedSimulation] = useState("");
+  const [simulationIDs, setSimulationIDs] = useState([]);
 
   useEffect(() => {
     console.log('Grid Rows: ', gridRows)
@@ -40,14 +43,28 @@ function App() {
   }, [timestep])
 
   useEffect(() => {
+    console.log('Simulation Name: ', simulationName)
+  }, [simulationName])
+
+  useEffect(() => {
+    console.log('Selected Simulation: ', selectedSimulation)
+  }
+  , [selectedSimulation])
+
+  useEffect(() => {
     document.documentElement.style.setProperty("--rows", gridRows);
     document.documentElement.style.setProperty("--cols", gridCols);
   }, [gridRows, gridCols])
   
   useEffect(() => {
     onMessage((data) => {
+      if (data.action === "get_simulations_response") {
+        setSimulationIDs(data.simulation_names); 
+    } else {
       setUpdates(data);
       setTimestep(data.time);
+    }
+    console.log("Received message from server:", data);
     });
   }, [onMessage]);
 
@@ -78,7 +95,13 @@ function App() {
             saveSimulation={saveSimulation}
             setSaveSimulation={setSaveSimulation}
             setSimulationStatus={setSimulationStatus} 
-            initialize_grid={initialize_grid}/>
+            simulationName={simulationName}
+            setSimulationName={setSimulationName}
+            initialize_grid={initialize_grid}
+            get_simulations={get_simulations}
+            simulationIDs={simulationIDs}
+            setSimulationIDs={setSimulationIDs}
+            onMessage={onMessage}/>
 
           <p>Simulation timestep: {timestep}</p>
         </div>

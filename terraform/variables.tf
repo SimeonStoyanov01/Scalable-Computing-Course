@@ -46,6 +46,17 @@ variable "image_name" {
     description = "Image name to be used"
 }
 
+variable "backend_image" {
+    type = string
+    description = "Backup image name to be used"
+  
+}
+
+variable "frontend_image" {
+    type = string
+    description = "Frontend image name to be used"
+}
+
 variable "public_network" {
     type = string
     description = "Name of the public network to connect to"

@@ -37,18 +37,33 @@ const useWebSocketClient = (url) => {
           };
     }, [url]);
     
-    const initialize_grid = ({gridRows, gridCols, ants}) => {
+    const initialize_grid = ({gridRows, gridCols, ants, saveSimulation}) => {
         if (socketRef.current && connected) {
-            console.log("Sending grid initialization command to the server: gridRows=", gridRows, "gridCols=", gridCols, "ants=", ants);
+            console.log("Sending grid initialization command to the server: gridRows=", gridRows, "gridCols=", gridCols, "ants=", ants, "saveSimulation=", saveSimulation);
             socketRef.current.send(JSON.stringify({ action: "initialize_grid", 
                 gridRows: gridRows, 
                 gridCols: gridCols, 
-                ants: ants
+                ants: ants,
+                saveSimulation: saveSimulation 
             }));
           }
     };
+
+    const get_simulations = async () => {
+        if (socketRef.current && connected) {
+            console.log("Sending get_simulations command to the server");
+            socketRef.current.send(JSON.stringify({ action: "get_simulations" }));
+          }
+    }
+
+    const get_simulation_data = async (simulation_name) => {
+        if (socketRef.current && connected) {
+            console.log("Sending get_simulation_data command to the server");
+            socketRef.current.send(JSON.stringify({ action: "get_simulation_data", simulation_name: simulation_name }));
+          }
+    }
     
-    return ({ connected, initialize_grid, onMessage });
+    return ({ connected, initialize_grid, get_simulations, get_simulation_data, onMessage });
 }
 
 export default useWebSocketClient;
