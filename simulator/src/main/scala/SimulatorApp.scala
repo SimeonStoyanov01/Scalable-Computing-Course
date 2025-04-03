@@ -51,7 +51,7 @@ object SimulatorApp {
   }
 
   def main(args: Array[String]): Unit = {
-    if (args.length == 0) {
+    if (args.length != 6) {
       println("Waiting for jobs")
       while (true) {
         val jobs = SimCont.consumer.poll(2000)
@@ -94,7 +94,7 @@ object SimulatorApp {
     val gridRowSize = jobRequest.gridRows
     val gridColSize = jobRequest.gridCols
     val numAnts = jobRequest.ants
-    val numSteps = jobRequest.numSteps.getOrElse(10000)
+    val numSteps = jobRequest.numSteps.getOrElse(10)
     val checkpointInterval = jobRequest.checkpointInterval.getOrElse(25)
 
     val checkpointDir = "s3a://checkpoints/"
