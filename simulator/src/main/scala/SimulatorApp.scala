@@ -96,7 +96,7 @@ object SimulatorApp {
     val numAnts = jobRequest.ants
     val numSteps = jobRequest.numSteps.getOrElse(10)
     val checkpointInterval = jobRequest.checkpointInterval.getOrElse(25)
-    val waitTime = jobRequest.waitBeforeRun.getOrElse(5000)
+    val waitTime = jobRequest.waitBeforeRun.getOrElse(10000)
 
     val checkpointDir = "s3a://checkpoints/"
 
@@ -204,7 +204,7 @@ object SimulatorApp {
 
 
     // println("pregellssss")
-    Thread.sleep(1000)
+    Thread.sleep(waitTime)
     val startTime = Instant.now()
 
     println(s"ROBIN: starting pregel")
