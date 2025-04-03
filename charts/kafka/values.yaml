@@ -26,72 +26,72 @@ externalAccess:
         - 30094
       useHostIPs: true
 
-extraDeploy:
-  - |
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-      name: {{ include "common.names.fullname" . }}-connect
-      labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
-        app.kubernetes.io/component: connector
-    spec:
-      replicas: 1
-      selector:
-        matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 6 }}
-          app.kubernetes.io/component: connector
-      template:
-        metadata:
-          labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
-            app.kubernetes.io/component: connector
-        spec:
-          containers:
-            - name: connect
-              image: makenjoy/kafka-connect-mongo-image:latest
-              imagePullPolicy: IfNotPresent
-              ports:
-                - name: connector
-                  containerPort: 8083
-              volumeMounts:
-                - name: configuration
-                  mountPath: /bitnami/kafka/config
-              command: ["/opt/bitnami/kafka/bin/connect-standalone.sh", "/bitnami/kafka/config/connect-standalone.properties", "/bitnami/kafka/config/mongo.properties"]
-          volumes:
-            - name: configuration
-              configMap:
-                name: {{ include "common.names.fullname" . }}-connect
-  - |
-    apiVersion: v1
-    kind: ConfigMap
-    metadata:
-      name: {{ include "common.names.fullname" . }}-connect
-      labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
-        app.kubernetes.io/component: connector
-    data:
-      connect-standalone.properties: |-
-        bootstrap.servers = {{ include "common.names.fullname" . }}-controller-0.{{ include "common.names.fullname" . }}-controller-headless.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}:{{ .Values.service.ports.client }}
-         topics = quickstart.sampleData
-         key.converter.schemas.enable = false
-         value.converter.schemas.enable = false
-         key.converter = org.apache.kafka.connect.json.JsonConverter
-         value.converter = org.apache.kafka.connect.json.JsonConverter
-         offset.storage.file.filename=/tmp/connect.offsets
+# extraDeploy:
+#   - |
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     metadata:
+#       name: {{ include "common.names.fullname" . }}-connect
+#       labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+#         app.kubernetes.io/component: connector
+#     spec:
+#       replicas: 1
+#       selector:
+#         matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 6 }}
+#           app.kubernetes.io/component: connector
+#       template:
+#         metadata:
+#           labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+#             app.kubernetes.io/component: connector
+#         spec:
+#           containers:
+#             - name: connect
+#               image: makenjoy/kafka-connect-mongo-image:latest
+#               imagePullPolicy: IfNotPresent
+#               ports:
+#                 - name: connector
+#                   containerPort: 8083
+#               volumeMounts:
+#                 - name: configuration
+#                   mountPath: /bitnami/kafka/config
+#               command: ["/opt/bitnami/kafka/bin/connect-standalone.sh", "/bitnami/kafka/config/connect-standalone.properties", "/bitnami/kafka/config/mongo.properties"]
+#           volumes:
+#             - name: configuration
+#               configMap:
+#                 name: {{ include "common.names.fullname" . }}-connect
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "common.names.fullname" . }}-connect
+#       labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+#         app.kubernetes.io/component: connector
+#     data:
+#       connect-standalone.properties: |-
+#         bootstrap.servers = {{ include "common.names.fullname" . }}-controller-0.{{ include "common.names.fullname" . }}-controller-headless.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}:{{ .Values.service.ports.client }}
+#          topics = quickstart.sampleData
+#          key.converter.schemas.enable = false
+#          value.converter.schemas.enable = false
+#          key.converter = org.apache.kafka.connect.json.JsonConverter
+#          value.converter = org.apache.kafka.connect.json.JsonConverter
+#          offset.storage.file.filename=/tmp/connect.offsets
 
-      mongodb.properties: |-
-        connection.uri=mongodb://root:password@mongodb-hostname:27017
-  - |
-    apiVersion: v1
-    kind: Service
-    metadata:
-      name: {{ include "common.names.fullname" . }}-connect
-      labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
-        app.kubernetes.io/component: connector
-    spec:
-      ports:
-        - protocol: TCP
-          port: 8083
-          targetPort: connector
-      selector: {{- include "common.labels.matchLabels" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
-        app.kubernetes.io/component: connector
+#       mongodb.properties: |-
+#         connection.uri=mongodb://root:password@mongodb-hostname:27017
+#   - |
+#     apiVersion: v1
+#     kind: Service
+#     metadata:
+#       name: {{ include "common.names.fullname" . }}-connect
+#       labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+#         app.kubernetes.io/component: connector
+#     spec:
+#       ports:
+#         - protocol: TCP
+#           port: 8083
+#           targetPort: connector
+#       selector: {{- include "common.labels.matchLabels" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+#         app.kubernetes.io/component: connector
  
 
 

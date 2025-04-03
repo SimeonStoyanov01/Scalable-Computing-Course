@@ -51,7 +51,7 @@ object SimulatorApp {
   }
 
   def main(args: Array[String]): Unit = {
-    if (args.length == 0) {
+    if (args.length != 6) {
       println("Waiting for jobs")
       while (true) {
         val jobs = SimCont.consumer.poll(2000)
@@ -81,7 +81,7 @@ object SimulatorApp {
       val checkpointInterval = args(4).toInt
       val repeatSimulation = args(5).toInt
       for (i <- 1 to repeatSimulation) {
-        runSimulation(new JobRequest(gridRows, gridCols, ants, Some(numSteps), Some(checkpointInterval)))
+        runSimulation(new JobRequest(gridRows, gridCols, ants, Some(numSteps), Some(checkpointInterval), None))
       }
     } else {
       println("Usage: SimulatorApp <gridRows> <gridCols> <ants> <numSteps> <checkpointInterval> <repeat>")
@@ -94,8 +94,9 @@ object SimulatorApp {
     val gridRowSize = jobRequest.gridRows
     val gridColSize = jobRequest.gridCols
     val numAnts = jobRequest.ants
-    val numSteps = jobRequest.numSteps.getOrElse(10000)
+    val numSteps = jobRequest.numSteps.getOrElse(10)
     val checkpointInterval = jobRequest.checkpointInterval.getOrElse(25)
+    val waitTime = jobRequest.waitBeforeRun.getOrElse(10000)
 
     val checkpointDir = "s3a://checkpoints/"
 
@@ -203,6 +204,7 @@ object SimulatorApp {
 
 
     // println("pregellssss")
+    Thread.sleep(waitTime)
     val startTime = Instant.now()
 
     println(s"ROBIN: starting pregel")
