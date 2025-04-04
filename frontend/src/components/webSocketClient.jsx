@@ -41,7 +41,7 @@ const useWebSocketClient = (url) => {
         };
     }, [url]);
 
-    const initialize_grid = ({ gridRows, gridCols, ants, saveSimulation }) => {
+    const initialize_grid = ({ gridRows, gridCols, ants, saveSimulation, simulationName, numSteps, checkpointInterval }) => {
         if (socketRef.current && connected) {
             console.log(
                 "Sending grid initialization command to the server: gridRows=",
@@ -51,7 +51,13 @@ const useWebSocketClient = (url) => {
                 "ants=",
                 ants,
                 "saveSimulation=",
-                saveSimulation
+                saveSimulation,
+                "simulationName=",
+                simulationName,
+                "numSteps=",
+                numSteps,
+                "checkpointInterval=",
+                checkpointInterval
             );
             socketRef.current.send(
                 JSON.stringify({
@@ -60,6 +66,9 @@ const useWebSocketClient = (url) => {
                     gridCols: gridCols,
                     ants: ants,
                     saveSimulation: saveSimulation,
+                    simulationName: simulationName,
+                    numSteps: numSteps,
+                    checkpointInterval: checkpointInterval,
                 })
             );
         }
@@ -86,11 +95,21 @@ const useWebSocketClient = (url) => {
         }
     };
 
+    const stop_simulation = async () => {
+        if (socketRef.current && connected) {
+            console.log("Sending stop_simulation command to the server");
+            socketRef.current.send(
+                JSON.stringify({ action: "stop_simulation" })
+            );
+        }
+    }
+
     return {
         connected,
         initialize_grid,
         get_simulations,
         get_simulation_data,
+        stop_simulation,
         onMessage,
     };
 };

@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: makenjoy/backend
+  repository: carmenzz/group-3-project-backend
   tag: latest
   pullPolicy: Always
 
@@ -20,3 +20,9 @@ envVars:
     value: kafka.default.svc.cluster.local:9092
   - name: MONGO_HOSTNAME
     value: mongo-mongodb.default.svc.cluster.local
+  - name: MONGO_INITDB_ROOT_USERNAME 
+    value: myuser
+  - name: MONGO_INITDB_ROOT_PASSWORD
+    value: secret
+  - name: MONGO_HOST
+    value: mongo

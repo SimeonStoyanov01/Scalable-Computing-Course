@@ -8,7 +8,10 @@ function ControlPanel({gridRows, setGridRows,
         simulationName, setSimulationName, 
         selectedSimulation, setSelectedSimulation, 
         simulationIDs, setSimulationIDs,
-        initialize_grid, get_simulations, get_simulation_data, onMessage}) {
+        numSteps, setNumSteps,
+        checkpointInterval, setCheckpointInterval,
+        index, setIndex,
+        initialize_grid, get_simulations, get_simulation_data, stop_simulation, onMessage}) {
     
     const handleStart = () => {
         setSimulationStatus(true);
@@ -16,8 +19,13 @@ function ControlPanel({gridRows, setGridRows,
             console.log("Selected simulation ID:", selectedSimulation);
             get_simulation_data(selectedSimulation);
         } else {
-            initialize_grid({gridRows, gridCols, ants, saveSimulation, simulationName});
+            initialize_grid({gridRows, gridCols, ants, saveSimulation, simulationName, numSteps, checkpointInterval});
         }
+    }
+
+    const handleStop = () => {
+        setSimulationStatus(false);
+        stop_simulation();
     }
 
     const handleFocus = () => {
@@ -28,6 +36,7 @@ function ControlPanel({gridRows, setGridRows,
     const handleSimulationSelect = (e) => {
         const simId = e.target.value;
         setSelectedSimulation(simId);
+        setSimulationName(simId);
         console.log("Selected simulation name:", simId);
     };
 
@@ -91,6 +100,34 @@ function ControlPanel({gridRows, setGridRows,
             <hr/>
 
             <div>
+                <label>
+                    Number of Steps:
+                    <input
+                    type="number"
+                    min="10"
+                    value={numSteps}
+                    onChange={(e) => setNumSteps(Number(e.target.value))}
+                    disabled={simulationRunning}
+                    />
+                </label>
+            </div>
+            <hr/>
+
+            <div>
+                <label>
+                    Checkpoint Interval:
+                    <input
+                    type="number"
+                    min="1"
+                    value={checkpointInterval}
+                    onChange={(e) => setCheckpointInterval(Number(e.target.value))}
+                    disabled={simulationRunning}
+                    />
+                </label>
+            </div>
+            <hr/>
+
+            <div>
                 <label>Select a saved simulation:</label>
                 <select
                 value={selectedSimulation}
@@ -105,6 +142,7 @@ function ControlPanel({gridRows, setGridRows,
                 ))}
                 </select>
             </div>
+            <hr/>
 
             <div>
                 <label>
@@ -126,7 +164,7 @@ function ControlPanel({gridRows, setGridRows,
             </div>
 
             <div>
-                <button disabled={!simulationRunning} onClick={(e) => setSimulationStatus(false)}>
+                <button disabled={!simulationRunning} onClick={(e) => handleStop()}>
                     Stop
                 </button>
             </div>

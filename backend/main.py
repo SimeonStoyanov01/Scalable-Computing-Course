@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 MONGO_INITDB_ROOT_USERNAME = os.getenv("MONGO_INITDB_ROOT_USERNAME", "myuser")
 MONGO_INITDB_ROOT_PASSWORD = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "secret")
-MONGO_HOSTNAME            = os.getenv("MONGO_HOSTNAME", "mongo")  # or just "mongo"
+MONGO_HOSTNAME            = os.getenv("MONGO_HOST", "mongo")  # or just "localhost" if running locally
 MONGO_CONNECTION_STRING   = (
     f"mongodb://{MONGO_INITDB_ROOT_USERNAME}:{MONGO_INITDB_ROOT_PASSWORD}"
     f"@{MONGO_HOSTNAME}:27017/?authSource=admin"

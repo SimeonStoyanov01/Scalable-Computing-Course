@@ -11,12 +11,15 @@ function App() {
   const [ants, setAntNumber] = useState(5);
   const [saveSimulation, setSaveSimulation] = useState(false);
   const [simulationRunning, setSimulationStatus] = useState(false);
-  const {connected, initialize_grid, get_simulations, get_simulation_data, onMessage} = useWebSocketClient("ws://MY_APP_WEBSOCKET_URL/ws")
+  const {connected, initialize_grid, get_simulations, get_simulation_data, stop_simulation, onMessage} = useWebSocketClient("ws://MY_APP_WEBSOCKET_URL/ws")
   const [updates, setUpdates] = useState(null);
   const [timestep, setTimestep] = useState(0);
   const [simulationName, setSimulationName] = useState("Simulation 1");
   const [selectedSimulation, setSelectedSimulation] = useState("");
   const [simulationIDs, setSimulationIDs] = useState([]);
+  const [numSteps, setNumSteps] = useState(100);
+  const [checkpointInterval, setCheckpointInterval] = useState(25);
+  const [index, setIndex] = useState(1);
 
   useEffect(() => {
     console.log('Grid Rows: ', gridRows)
@@ -104,6 +107,13 @@ function App() {
             selectedSimulation={selectedSimulation}
             setSelectedSimulation={setSelectedSimulation}
             get_simulation_data={get_simulation_data}
+            numSteps={numSteps}
+            setNumSteps={setNumSteps}
+            checkpointInterval={checkpointInterval}
+            setCheckpointInterval={setCheckpointInterval}
+            stop_simulation={stop_simulation}
+            index={index}
+            setIndex={setIndex}
             onMessage={onMessage}/>
 
           <p>Simulation timestep: {timestep}</p>
