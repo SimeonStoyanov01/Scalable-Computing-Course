@@ -18,3 +18,5 @@ ingress:
 envVars:
   - name: KAFKA_BOOTSTRAP_SERVERS
     value: kafka.default.svc.cluster.local:9092
+  - name: MONGO_HOSTNAME
+    value: mongo-mongodb.default.svc.cluster.local
