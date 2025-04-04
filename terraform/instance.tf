@@ -8,7 +8,7 @@ resource "openstack_compute_instance_v2" "master" {
   block_device {
     uuid                  = data.openstack_images_image_v2.ubuntu.id
     source_type           = "image"
-    volume_size           = 50
+    volume_size           = 40
     boot_index            = 0
     destination_type      = "volume"
     delete_on_termination = true
@@ -46,7 +46,7 @@ resource "null_resource" "copy_helm_charts" {
 }
 
 resource "openstack_compute_instance_v2" "worker" {
-  count = 2
+  count = 4
   name = "Worker-${count.index + 1}"
   image_name      = data.openstack_images_image_v2.ubuntu.name
   flavor_name     = var.flavor_name_worker
@@ -56,7 +56,7 @@ resource "openstack_compute_instance_v2" "worker" {
   block_device {
     uuid                  = data.openstack_images_image_v2.ubuntu.id
     source_type           = "image"
-    volume_size           = 50
+    volume_size           = 40
     boot_index            = 0
     destination_type      = "volume"
     delete_on_termination = true

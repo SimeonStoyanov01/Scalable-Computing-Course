@@ -75,7 +75,7 @@ resource "openstack_networking_port_v2" "master" {
 }
 
 resource "openstack_networking_port_v2" "worker" {
-    count = 2
+    count = 4
     network_id = openstack_networking_network_v2.internal.id
     admin_state_up = "true"
     security_group_ids = [
