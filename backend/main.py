@@ -8,7 +8,6 @@ import asyncio
 import logging
 import motor.motor_asyncio
 import uuid
-import time
 
 app = FastAPI()
 
@@ -94,8 +93,7 @@ async def kafka_listener():
                     continue #skip bad json.
         finally:
             await consumer.stop()
-            print(f"Stopped kafka consumer, sleeping before trying again")
-            time.sleep(3)
+            print(f"Stopped kafka consumer, trying again")
 
 @app.get("/")
 async def get():

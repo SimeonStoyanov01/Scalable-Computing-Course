@@ -94,7 +94,7 @@ object SimulatorApp {
     val gridRowSize = jobRequest.gridRows
     val gridColSize = jobRequest.gridCols
     val numAnts = jobRequest.ants
-    val numSteps = jobRequest.numSteps.getOrElse(10)
+    val numSteps = jobRequest.numSteps.getOrElse(100)
     val checkpointInterval = jobRequest.checkpointInterval.getOrElse(25)
     val waitTime = jobRequest.waitBeforeRun.getOrElse(10000)
 
