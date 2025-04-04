@@ -3,3 +3,4 @@ uvicorn
 websockets
 aiokafka
 kafka-python
+motor

@@ -43,6 +43,7 @@ services:
       - "8000:8000"
     depends_on:
       - kafka
+      - mongo
 
   frontend:
     build:
@@ -55,3 +56,12 @@ services:
       - backend
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  mongo:
+    image: 'mongo:latest' 
+    container_name: mongo 
+    ports:
+      - '27017:27017' 
+    environment:
+      - 'MONGO_INITDB_ROOT_USERNAME=myuser'
+      - 'MONGO_INITDB_ROOT_PASSWORD=secret' 
