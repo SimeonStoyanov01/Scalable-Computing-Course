@@ -1,7 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: carmenzz/group-3-project-backend
+  # repository: carmenzz/group-3-project-backend
+  repository: makenjoy/backend
   tag: latest
   pullPolicy: Always
 

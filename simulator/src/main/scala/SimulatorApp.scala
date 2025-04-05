@@ -220,7 +220,7 @@ object SimulatorApp {
 
     println(s"Simulation time: ${duration.toMillis} milliseconds")
 
-    //spark.stop()
+    // spark.stop()
   }
 
   def printPrettyGrid(graph: Graph[Cell, Direction.Value], rowSize: Int, colSize: Int): Unit = {

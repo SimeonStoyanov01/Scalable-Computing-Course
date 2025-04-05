@@ -54,6 +54,7 @@ async def initialize_variables():
 @app.on_event("startup")
 async def startup_event():
     # Start an async task that runs the AIOKafkaConsumer
+    logger.info("Creating listener task")
     asyncio.create_task(kafka_listener())
 
 async def kafka_listener():
@@ -63,20 +64,22 @@ async def kafka_listener():
         auto_offset_reset="earliest"
     )
     while True:
+        logger.info("Starting consumer")
         await consumer.start()
         try:
             cells = []
             time = -1
+            logger.info("Reading messages from consumer")
             async for msg in consumer:
                 data_str = msg.value.decode('utf-8')
-                print("Got simulation update from Kafka:", data_str)
+                logger.info(f"Got simulation update from Kafka: {data_str}")
                 try:
                     data = json.loads(data_str)
                     saveSimulation = data.get("saveSimulation", False)
                     if not ( time == -1 or data["time"] == time ):
                         aggregated_data = {"time": time, "cells": cells}
                         aggregated_json = json.dumps(aggregated_data)
-                        print("Aggregated simulation updates:", aggregated_json)
+                        logger.info(f"Aggregated simulation updates: {aggregated_json}")
                         for ws in clients:
                             await ws.send_text(aggregated_json)
                         if app.state.save_simulation:
@@ -93,7 +96,7 @@ async def kafka_listener():
                     continue #skip bad json.
         finally:
             await consumer.stop()
-            print(f"Stopped kafka consumer, trying again")
+            logger.info(f"Stopped kafka consumer, trying again")
 
 @app.get("/")
 async def get():
@@ -146,6 +149,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 grid_rows = command.get("gridRows")
                 grid_cols = command.get("gridCols")
                 ants = command.get("ants")
+                numSteps = command.get("numSteps")
+                checkpointInterval = command.get("checkpointInterval")
                 saveSimulation = command.get("saveSimulation", False)
                 simulationName = command.get("simulationName", "default")
                 app.state.save_simulation = saveSimulation
@@ -160,7 +165,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     "gridCols": grid_cols,
                     "ants": ants,
                     "saveSimulation": saveSimulation,
-                    "simulationName": simulationName
+                    "simulationName": simulationName,
+                    "numSteps": numSteps,
+                    "checkpointInterval": checkpointInterval
                 } 
                 await initialize_grid(websocket, command_data)
 
