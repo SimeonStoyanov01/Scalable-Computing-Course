@@ -61,7 +61,8 @@ async def kafka_listener():
     consumer = AIOKafkaConsumer(
         "langton_ant_updates",
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-        auto_offset_reset="earliest"
+        # auto_offset_reset="earliest",
+        group_id="backend-consumer-group"
     )
     while True:
         logger.info("Starting consumer")

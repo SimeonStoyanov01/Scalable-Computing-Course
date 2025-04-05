@@ -25,8 +25,15 @@ function Grid( {gridRows, gridCols, updates} ) {
     
           updates.cells.forEach((cellUpdate) => {
             const { rowInd, colInd, colour, ants } = cellUpdate;
-            newGrid[rowInd][colInd].color = colour ? "grey" : "white";
-            newGrid[rowInd][colInd].ants = ants;
+            if (
+              rowInd >= 0 &&
+              rowInd < newGrid.length &&
+              colInd >= 0 &&
+              colInd < newGrid[rowInd].length
+            ) {
+              newGrid[rowInd][colInd].color = colour ? "grey" : "white";
+              newGrid[rowInd][colInd].ants = ants;
+            }
           });
     
           return newGrid;
