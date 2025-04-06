@@ -20,6 +20,7 @@ function App() {
   const [numSteps, setNumSteps] = useState(100);
   const [checkpointInterval, setCheckpointInterval] = useState(25);
   const [index, setIndex] = useState(1);
+  const [newSimulation, setNewSimulation] = useState(true);
 
   useEffect(() => {
     console.log('Grid Rows: ', gridRows)
@@ -114,6 +115,8 @@ function App() {
             stop_simulation={stop_simulation}
             index={index}
             setIndex={setIndex}
+            newSimulation={newSimulation}
+            setNewSimulation={setNewSimulation}
             onMessage={onMessage}/>
 
           <p>Simulation timestep: {timestep}</p>

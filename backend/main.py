@@ -15,12 +15,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
-MONGO_INITDB_ROOT_USERNAME = os.getenv("MONGO_INITDB_ROOT_USERNAME", "myuser")
-MONGO_INITDB_ROOT_PASSWORD = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "secret")
-MONGO_HOSTNAME            = os.getenv("MONGO_HOST", "mongo")  # or just "localhost" if running locally
-MONGO_CONNECTION_STRING   = (
-    f"mongodb://{MONGO_INITDB_ROOT_USERNAME}:{MONGO_INITDB_ROOT_PASSWORD}"
-    f"@{MONGO_HOSTNAME}:27017/?authSource=admin"
+MONGO_USER = os.getenv("MONGO_USER", "dbuser")
+MONGO_PASSWORD = os.getenv("MONGO_PASSWORD", "dbsecret")
+MONGO_HOSTNAME = os.getenv("MONGO_HOST", "mongo-mongodb")
+MONGO_CONNECTION_STRING = (
+    f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOSTNAME}:27017/langton_ant?authSource=langton_ant"
 )
 
 try:
@@ -33,13 +32,16 @@ except Exception as e:
     logger.error(f"Failed to initialize Kafka Producer: {e}")
     producer = None
 
-clients = []
-
-@app.on_event("startup")
-async def startup_db_client():
+try:
     app.mongodb_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_CONNECTION_STRING)
     app.database = app.mongodb_client["langton_ant"] 
     app.collection = app.database["simulations"]
+    logger.info("MongoDB Client successfully initialized")
+except Exception as e:
+    logger.error(f"Failed to initialize MongoDB Client: {e}")
+    raise e
+
+clients = []
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
@@ -198,6 +200,18 @@ async def websocket_endpoint(websocket: WebSocket):
                         simulation["_id"] = str(simulation["_id"])
                         await websocket.send_text(json.dumps(simulation))
                         await asyncio.sleep(0.2)  
+
+            if command["action"] == "stop_simulation":
+                print("Stopping simulation")
+                data = {
+                    "action": "stop_simulation"
+                }
+                app.state.save_simulation = False
+                app.state.simulation_name = None
+                app.state.simulation_id = None
+                # producer.send("jobs", value=data)
+                # producer.flush()
+                await websocket.send_text("Simulation stopped")
 
     except WebSocketDisconnect:
         clients.remove(websocket)

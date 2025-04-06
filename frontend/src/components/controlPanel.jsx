@@ -11,10 +11,17 @@ function ControlPanel({gridRows, setGridRows,
         numSteps, setNumSteps,
         checkpointInterval, setCheckpointInterval,
         index, setIndex,
+        newSimulation, setNewSimulation,
         initialize_grid, get_simulations, get_simulation_data, stop_simulation, onMessage}) {
     
     const handleStart = () => {
         setSimulationStatus(true);
+        
+        if (newSimulation) {
+            setIndex(index + 1);
+            setSimulationName("Simulation " + index);
+        }
+        setNewSimulation(false);
         if (selectedSimulation) {
             console.log("Selected simulation ID:", selectedSimulation);
             get_simulation_data(selectedSimulation);
@@ -40,6 +47,31 @@ function ControlPanel({gridRows, setGridRows,
         console.log("Selected simulation name:", simId);
     };
 
+    const handleRowChange = (e) => {
+        setGridRows(Number(e.target.value))
+        setNewSimulation(true);
+    }
+
+    const handleColumnChange = (e) => {
+        setGridCols(Number(e.target.value))
+        setNewSimulation(true);
+    }
+
+    const handleAntChange = (e) => {
+        setAntNumber(Number(e.target.value))
+        setNewSimulation(true);
+    }
+
+    const handleNumStepsChange = (e) => {
+        setNumSteps(Number(e.target.value))
+        setNewSimulation(true);
+    }
+
+    const handleCheckpointIntervalChange = (e) => {
+        setCheckpointInterval(Number(e.target.value))
+        setNewSimulation(true);
+    }
+
     return (
         <div>
             <h1> Control Panel</h1>
@@ -51,7 +83,7 @@ function ControlPanel({gridRows, setGridRows,
                     type="number" 
                     min="1" 
                     value={gridRows} 
-                    onChange={(e) => setGridRows(Number(e.target.value))} 
+                    onChange={(e) => handleRowChange(e)} 
                     disabled={simulationRunning}
                     />
                 </label>
@@ -65,7 +97,7 @@ function ControlPanel({gridRows, setGridRows,
                     type="number" 
                     min="1" 
                     value={gridCols} 
-                    onChange={(e) => setGridCols(Number(e.target.value))} 
+                    onChange={(e) => handleColumnChange(e)} 
                     disabled={simulationRunning}
                     />
                 </label>
@@ -79,7 +111,7 @@ function ControlPanel({gridRows, setGridRows,
                     type="number" 
                     min="1" 
                     value={ants} 
-                    onChange={(e) => setAntNumber(Number(e.target.value))} 
+                    onChange={(e) => handleAntChange(e)} 
                     disabled={simulationRunning}
                     />
                 </label>
@@ -106,7 +138,7 @@ function ControlPanel({gridRows, setGridRows,
                     type="number"
                     min="10"
                     value={numSteps}
-                    onChange={(e) => setNumSteps(Number(e.target.value))}
+                    onChange={(e) => handleNumStepsChange(e)}
                     disabled={simulationRunning}
                     />
                 </label>
@@ -120,7 +152,7 @@ function ControlPanel({gridRows, setGridRows,
                     type="number"
                     min="1"
                     value={checkpointInterval}
-                    onChange={(e) => setCheckpointInterval(Number(e.target.value))}
+                    onChange={(e) => handleCheckpointIntervalChange(e)}
                     disabled={simulationRunning}
                     />
                 </label>

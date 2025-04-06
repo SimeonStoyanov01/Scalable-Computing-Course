@@ -55,7 +55,12 @@ runcmd:
     helm repo add cpo https://kubernetes.github.io/cloud-provider-openstack
     helm repo add bitnami https://charts.bitnami.com/bitnami
   
-    helm upgrade --install mongo bitnami/mongodb
+    helm install mongo bitnami/mongodb \
+      --set auth.usernames[0]=dbuser \
+      --set auth.passwords[0]=dbsecret \
+      --set auth.databases[0]=langton_ant
+
+    
 
     export chartsdir=/home/ubuntu/charts
     while [[ ! -d "$chartsdir" ]]; do

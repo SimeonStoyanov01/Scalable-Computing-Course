@@ -1,8 +1,8 @@
 replicaCount: 1
 
 image:
-  # repository: carmenzz/group-3-project-frontend
-  repository: makenjoy/frontend
+  repository: carmenzz/group-3-project-frontend
+  # repository: makenjoy/frontend
   tag: latest
   pullPolicy: Always
 
