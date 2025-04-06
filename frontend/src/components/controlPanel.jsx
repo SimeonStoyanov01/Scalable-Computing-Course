@@ -12,6 +12,7 @@ function ControlPanel({gridRows, setGridRows,
         checkpointInterval, setCheckpointInterval,
         index, setIndex,
         newSimulation, setNewSimulation,
+        grid, setGrid,
         initialize_grid, get_simulations, get_simulation_data, stop_simulation, onMessage}) {
     
     const handleStart = () => {
@@ -20,6 +21,14 @@ function ControlPanel({gridRows, setGridRows,
         if (newSimulation) {
             setIndex(index + 1);
             setSimulationName("Simulation " + index);
+            setGrid([]);
+            const newGrid = Array.from({ length: gridRows }, () =>
+                Array.from({ length: gridCols }, () => ({
+                    colour: "white",
+                    ants: [],
+                }))
+              );
+            setGrid(newGrid);
         }
         setNewSimulation(false);
         if (selectedSimulation) {
@@ -44,6 +53,7 @@ function ControlPanel({gridRows, setGridRows,
         const simId = e.target.value;
         setSelectedSimulation(simId);
         setSimulationName(simId);
+        setNewSimulation(true);
         console.log("Selected simulation name:", simId);
     };
 

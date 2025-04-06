@@ -6,6 +6,8 @@ import Grid from './components/grid';
 import useWebSocketClient from './components/webSocketClient';
 
 function App() {
+  
+  const [grid, setGrid] = useState([]);
   const [gridRows, setGridRows] = useState(10);
   const [gridCols, setGridCols] = useState(10);
   const [ants, setAntNumber] = useState(5);
@@ -85,7 +87,9 @@ function App() {
         <div className="left-panel">
           <Grid gridRows={gridRows}
             gridCols={gridCols} 
-            updates={updates} />
+            updates={updates}
+            grid={grid}
+            setGrid={setGrid} />
         </div>
 
         <div className="right-panel">
@@ -117,6 +121,8 @@ function App() {
             setIndex={setIndex}
             newSimulation={newSimulation}
             setNewSimulation={setNewSimulation}
+            grid={grid}
+            setGrid={setGrid}
             onMessage={onMessage}/>
 
           <p>Simulation timestep: {timestep}</p>

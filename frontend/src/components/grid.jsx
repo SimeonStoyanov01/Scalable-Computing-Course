@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import ant_icon from '../ant_icon.png';
 
-function Grid( {gridRows, gridCols, updates} ) {
-    const [grid, setGrid] = useState([]);
+function Grid( {gridRows, gridCols, updates, grid, setGrid} ) {
 
     useEffect(() => {
         const newGrid = Array.from({ length: gridRows }, () =>

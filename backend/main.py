@@ -211,7 +211,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 app.state.simulation_id = None
                 # producer.send("jobs", value=data)
                 # producer.flush()
-                await websocket.send_text("Simulation stopped")
+                # await websocket.send_text("Simulation stopped")
 
     except WebSocketDisconnect:
         clients.remove(websocket)
