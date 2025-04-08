@@ -1,6 +1,6 @@
 # Scalable computing - Report
 
-![alt text](figures/screenshot.png)
+![alt text](figures/latestFrontend.png)
 
 ## Introduction
 Langton's Ant is a simple automation, that allows for measuring algorithmic complexity, through the simple rules that an ant follows, while travesing a grid. Based on the rules defined and the number of steps completed, the ant forms intricate patterns overtime. While the concept is fascinating and it presents some peculiarity being related to the subject of ants, the simulation of multiple Langton Ants traversing both small and large grids could present a great computational challenge. The purpose of this project is to create a scalable framework, capable of simulating multiple ants concurrently, without facing performance bottlenecks with the increase of workload. 
@@ -29,7 +29,9 @@ The React frontend communicates with the backend via WebSocket, enabling real-ti
 
 ## Data pipelines
 
-### Streaming data #Robin?
+### Streaming data 
+
+<!-- #Robin? -->
 
 1. Frontend makes a job request over HTTP.
 2. Backend passes this job request on to a kafka topic.
@@ -41,6 +43,13 @@ The React frontend communicates with the backend via WebSocket, enabling real-ti
 
 ### Historical data 
 <!-- #Carmen -->
+
+1. Frontend signals the backend to save the ensuing simulation.
+2. Backend reads the simulation updates from the kafka topic and saves them to the MongoDB database.
+3. Frontend queries the backend for historical data.
+4. Backend queries the MongoDB database for the requested simulation.
+5. Backend returns the requested simulation to the frontend.
+6. Frontend displays the requested simulation to the user.
 
 <!-- Include pipeline figure if you can -->
 
@@ -79,7 +88,7 @@ The backend is responsible for several tasks, including:
 
 The frontend represents the first point of access for the user to interact with the application. It displays the state of the simulation in real-time, as well as offering a set of controls to manipulate the simulation. This component has been implemented using React, a JavaScript library for constructing responsive and dynamic user interfaces. This design choice comes naturally as React enables the utilisation of reusable components for fast rendering of real-time updates of the state of the simulation, as well as providing native intergration for websocket communication with the backend.
 
-We have designed the user interface with a focus on simplicity and intuitive interaction. The user may modify the parameters of the simulation, consisting of the grid size (rows and columns) and the number of ants. Furthermore, the user can save the current simulation by marking the `Save Simulation` checkbox. Naturally, the user can opt for visualizing a previous simulation by selecting an entry from the dropdown menu.
+We have designed the user interface with a focus on simplicity and intuitive interaction. The user may modify the parameters of the simulation, consisting of the grid size (rows and columns), the number of ants, the name of the simulation(relevant for the eventual save), the number of timesteps to be performed by the simulation and the interval in which to perform checkpoints. Furthermore, the user can save the current simulation by marking the `Save Simulation` checkbox. Naturally, the user can opt for visualizing a previous simulation by selecting an entry from the dropdown menu.
 
 
 ### Database 
@@ -116,13 +125,21 @@ Each time step is indexed by the field `simulation_id`, which is a unique auto-g
 
 
 ### Kubernetes cluster 
-
 <!-- Discuss ingress and overall cluster communication -->
+
+<!-- #Carmen -->
+The application is deployed on a Kubernetes cluster, which is a container orchestration platform that automates the deployment, scaling and management of containerized applications. The cluster is composed of four nodes, one master node and three worker nodes. The master node is responsible for managing the cluster and scheduling the pods, while the worker nodes run the actual application pods with the asssociated services.
+
+The application is deployed using K3s, a lightweight Kubernetes distribution that is easy to install and manage. The application is exposed to the outside world through an ingress controller, which routes incoming traffic to the appropriate service based on the request URL.
+
+The principal services consisting of `backend`, `frontend`, `kafka` and `simulator` are deployed through Helm charts, which are packages of pre-configured Kubernetes resources. These charts define the necessary resources for each service, including deployments, services, environment variables. 
 
 ### Terraform deployment
  <!-- #Carmen -->
 
-<!-- Discuss deployment, terrform state -->
+<!-- Discuss deployment -->
+
+The infrastructure is provisioned using Terraform, an open-source infrastructure as code (IaC) tool that allows for the creation and management of cloud resources. The Terraform configuration files define the necessary resources for the application, including the Kubernetes cluster, the nodes and the network configuration. The configuration files are written in HashiCorp Configuration Language (HCL), which is a declarative language that allows for the definition of cloud resources in a human-readable format. 
 
 
 ## Scalability considerations
@@ -152,7 +169,7 @@ We achieve data locality awareness when sending simulation updates to kafka by s
 
 One principle which constitutes an essential building block of the design of the system architecture is containerization. This practice promotes component isolation and encapsulation, which leverages portability and scalable deployment. The core components of the application, composed of the backend, frontend, simulation etc., are encapsulated using Docker. In this manner, each component is self-contained, allowing seamless deployment and scaling across multiple environemnts. 
 
-### Load balancing
+<!-- ### Load balancing -->
 
 <!-- ### Sharding - #Carmen if we manage to implement it I guess -->
 
